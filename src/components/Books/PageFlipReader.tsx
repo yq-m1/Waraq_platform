@@ -31,6 +31,9 @@ const BookPage = React.forwardRef<
       position: 'relative',
       overflow: 'hidden',
       boxSizing: 'border-box',
+      // Counter-mirror the content so text reads correctly after the
+      // book container is mirrored for RTL.
+      transform: isRTL ? 'scaleX(-1)' : undefined,
     }}
   >
     {/* Top decorative rule */}
@@ -269,12 +272,16 @@ export default function PageFlipReader({ pages, title, onClose }: Props) {
           <ChevronLeft className="w-5 h-5" />
         </ArrowButton>
 
-        {/* Book container: outer shadow lifts it off the dark background */}
+        {/* Book container: outer shadow lifts it off the dark background.
+            scaleX(-1) mirrors the entire book for RTL so that:
+            - pages[0] lands on the screen-right (correct for Arabic page 1)
+            - the flip animation sweeps left→right (correct Arabic page turn) */}
         <div
           style={{
             position: 'relative',
             width: pageW * 2,
             height: pageH,
+            transform: isRTL ? 'scaleX(-1)' : undefined,
             boxShadow:
               '0 28px 60px rgba(0,0,0,0.72), 0 6px 20px rgba(0,0,0,0.5), 0 1px 4px rgba(0,0,0,0.35)',
           }}
