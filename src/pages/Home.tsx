@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BookOpen, Sparkles, ArrowDown, ChevronDown, Loader2, Heart } from 'lucide-react';
+import { BookOpen, ChevronDown, Loader2, Heart } from 'lucide-react';
 import { supabase, type Book } from '../lib/supabase';
 import { useLang } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -12,13 +12,12 @@ const PAGE_SIZE = 8;
 type FilterKey = 'all' | 'most-read' | 'novels' | 'recent-reviews';
 
 type HomeProps = {
-  searchQuery: string;
   onBookClick: (book: Book) => void;
   onOpenAuth: (mode: 'login' | 'signup') => void;
   onNavigate?: (page: string) => void;
 };
 
-export default function Home({ searchQuery, onBookClick, onOpenAuth, onNavigate }: HomeProps) {
+export default function Home({ onBookClick, onOpenAuth, onNavigate }: HomeProps) {
   const { t, lang } = useLang();
   const { user } = useAuth();
   const [books, setBooks] = useState<Book[]>([]);
@@ -56,13 +55,6 @@ export default function Home({ searchQuery, onBookClick, onOpenAuth, onNavigate 
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
   }, [activeFilter]);
-
-  const searchFiltered = searchQuery
-    ? books.filter(b =>
-        b.title_ar.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        b.title_en.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : books;
 
   const freeBooks = books.filter(b => b.is_free_to_read);
 
@@ -183,155 +175,128 @@ export default function Home({ searchQuery, onBookClick, onOpenAuth, onNavigate 
 
       {/* Books Content */}
       <div id="books">
-        {searchQuery ? (
-          <section className="py-12">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex items-center gap-3 mb-8">
-                <div className="w-1 h-7 bg-amber-400 rounded-full" />
-                <h2 className="text-2xl font-bold text-stone-800" style={{ fontFamily: lang === 'ar' ? 'serif' : 'inherit' }}>
-                  {t.sections.search_results}: "{searchQuery}"
-                </h2>
-              </div>
-              {searchFiltered.length === 0 ? (
-                <div className="text-center py-20 text-stone-400">
-                  <BookOpen className="w-12 h-12 mx-auto mb-4 opacity-30" />
-                  <p>{t.sections.no_results} "{searchQuery}"</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
-                  {searchFiltered.map(book => (
-                    <BookCard key={book.id} book={book} onClick={onBookClick} />
-                  ))}
-                </div>
-              )}
+        {/* Top 10 Rated Books — first section below hero */}
+        {!loading && topRated.length > 0 && (
+          <TopRatedCarousel books={topRated} onBookClick={onBookClick} />
+        )}
+
+        {/* Free Books Carousel */}
+        {freeBooks.length > 0 && (
+          <FreeBookCarousel
+            books={freeBooks}
+            title={t.sections.free_books}
+            onBookClick={onBookClick}
+            onViewAll={() => onNavigate?.('free-books')}
+          />
+        )}
+
+        {/* All Books — with filter tabs + load more */}
+        <section className="py-14 bg-stone-50 border-t border-stone-100">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+            {/* Section header */}
+            <div className="flex items-center gap-3 mb-8">
+              <div className="w-1 h-7 bg-amber-400 rounded-full" />
+              <h2
+                className="text-2xl font-bold text-stone-800"
+                style={{ fontFamily: lang === 'ar' ? 'serif' : 'inherit' }}
+              >
+                {t.sections.all_books}
+              </h2>
             </div>
-          </section>
-        ) : (
-          <>
-            {/* Top 10 Rated Books — first section below hero */}
-            {!loading && topRated.length > 0 && (
-              <TopRatedCarousel books={topRated} onBookClick={onBookClick} />
+
+            {/* Filter tabs */}
+            <div
+              dir={lang === 'ar' ? 'rtl' : 'ltr'}
+              className="flex items-center gap-2 flex-wrap mb-8"
+            >
+              {filterTabs.map(({ key, label }) => (
+                <button
+                  key={key}
+                  onClick={() => setActiveFilter(key)}
+                  className={`
+                    relative px-5 py-2 rounded-full text-sm font-semibold transition-all duration-200
+                    ${activeFilter === key
+                      ? 'bg-amber-900 text-amber-100 shadow-md shadow-amber-900/20'
+                      : 'bg-white text-stone-600 border border-stone-200 hover:border-amber-300 hover:text-amber-800 hover:bg-amber-50'
+                    }
+                  `}
+                  style={{ fontFamily: lang === 'ar' ? 'serif' : 'inherit' }}
+                >
+                  {label}
+                  {activeFilter === key && (
+                    <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-amber-400" />
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {/* Grid */}
+            {loading ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
+                {Array.from({ length: PAGE_SIZE }).map((_, i) => (
+                  <div key={i} className="bg-white rounded-2xl overflow-hidden border border-stone-100 animate-pulse">
+                    <div className="aspect-[2/3] bg-stone-200" />
+                    <div className="p-4 space-y-2">
+                      <div className="h-4 bg-stone-200 rounded w-3/4" />
+                      <div className="h-3 bg-stone-100 rounded w-1/2" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : visibleBooks.length === 0 ? (
+              <div className="text-center py-20 text-stone-400">
+                <BookOpen className="w-12 h-12 mx-auto mb-4 opacity-30" />
+                <p style={{ fontFamily: lang === 'ar' ? 'serif' : 'inherit' }}>
+                  {lang === 'ar' ? 'لا توجد كتب في هذه الفئة' : 'No books in this category'}
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
+                {visibleBooks.map(book => (
+                  <BookCard key={book.id} book={book} onClick={onBookClick} />
+                ))}
+              </div>
             )}
 
-            {/* Free Books Carousel */}
-            {freeBooks.length > 0 && (
-              <FreeBookCarousel
-                books={freeBooks}
-                title={t.sections.free_books}
-                onBookClick={onBookClick}
-                onViewAll={() => onNavigate?.('free-books')}
-              />
-            )}
-
-            {/* All Books — with filter tabs + load more */}
-            <section className="py-14 bg-stone-50 border-t border-stone-100">
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-
-                {/* Section header */}
-                <div className="flex items-center gap-3 mb-8">
-                  <div className="w-1 h-7 bg-amber-400 rounded-full" />
-                  <h2
-                    className="text-2xl font-bold text-stone-800"
+            {/* Load More / End indicator */}
+            {!loading && allFiltered.length > 0 && (
+              <div className="mt-12 flex flex-col items-center gap-3">
+                {hasMore ? (
+                  <button
+                    onClick={handleLoadMore}
+                    disabled={loadingMore}
+                    className="group flex items-center gap-3 px-8 py-3.5 bg-amber-900 hover:bg-amber-800 disabled:opacity-70 text-amber-100 font-semibold rounded-full transition-all duration-200 shadow-lg shadow-amber-900/20 hover:shadow-amber-900/30 hover:-translate-y-0.5"
                     style={{ fontFamily: lang === 'ar' ? 'serif' : 'inherit' }}
                   >
-                    {t.sections.all_books}
-                  </h2>
-                </div>
-
-                {/* Filter tabs */}
-                <div
-                  dir={lang === 'ar' ? 'rtl' : 'ltr'}
-                  className="flex items-center gap-2 flex-wrap mb-8"
-                >
-                  {filterTabs.map(({ key, label }) => (
-                    <button
-                      key={key}
-                      onClick={() => setActiveFilter(key)}
-                      className={`
-                        relative px-5 py-2 rounded-full text-sm font-semibold transition-all duration-200
-                        ${activeFilter === key
-                          ? 'bg-amber-900 text-amber-100 shadow-md shadow-amber-900/20'
-                          : 'bg-white text-stone-600 border border-stone-200 hover:border-amber-300 hover:text-amber-800 hover:bg-amber-50'
-                        }
-                      `}
-                      style={{ fontFamily: lang === 'ar' ? 'serif' : 'inherit' }}
-                    >
-                      {label}
-                      {activeFilter === key && (
-                        <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-amber-400" />
-                      )}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Grid */}
-                {loading ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
-                    {Array.from({ length: PAGE_SIZE }).map((_, i) => (
-                      <div key={i} className="bg-white rounded-2xl overflow-hidden border border-stone-100 animate-pulse">
-                        <div className="aspect-[2/3] bg-stone-200" />
-                        <div className="p-4 space-y-2">
-                          <div className="h-4 bg-stone-200 rounded w-3/4" />
-                          <div className="h-3 bg-stone-100 rounded w-1/2" />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : visibleBooks.length === 0 ? (
-                  <div className="text-center py-20 text-stone-400">
-                    <BookOpen className="w-12 h-12 mx-auto mb-4 opacity-30" />
-                    <p style={{ fontFamily: lang === 'ar' ? 'serif' : 'inherit' }}>
-                      {lang === 'ar' ? 'لا توجد كتب في هذه الفئة' : 'No books in this category'}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
-                    {visibleBooks.map(book => (
-                      <BookCard key={book.id} book={book} onClick={onBookClick} />
-                    ))}
-                  </div>
-                )}
-
-                {/* Load More / End indicator */}
-                {!loading && allFiltered.length > 0 && (
-                  <div className="mt-12 flex flex-col items-center gap-3">
-                    {hasMore ? (
-                      <button
-                        onClick={handleLoadMore}
-                        disabled={loadingMore}
-                        className="group flex items-center gap-3 px-8 py-3.5 bg-amber-900 hover:bg-amber-800 disabled:opacity-70 text-amber-100 font-semibold rounded-full transition-all duration-200 shadow-lg shadow-amber-900/20 hover:shadow-amber-900/30 hover:-translate-y-0.5"
-                        style={{ fontFamily: lang === 'ar' ? 'serif' : 'inherit' }}
-                      >
-                        {loadingMore ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <ChevronDown className="w-4 h-4 transition-transform duration-200 group-hover:translate-y-0.5" />
-                        )}
-                        {t.sections.load_more}
-                        {!loadingMore && (
-                          <span className="text-amber-400/70 text-xs font-normal">
-                            {allFiltered.length - visibleCount}+
-                          </span>
-                        )}
-                      </button>
+                    {loadingMore ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
-                      <p className="text-stone-400 text-sm flex items-center gap-2">
-                        <span className="inline-block w-8 h-px bg-stone-300" />
-                        {t.sections.all_shown}
-                        <span className="inline-block w-8 h-px bg-stone-300" />
-                      </p>
+                      <ChevronDown className="w-4 h-4 transition-transform duration-200 group-hover:translate-y-0.5" />
                     )}
-                    <p className="text-stone-400 text-xs">
-                      {lang === 'ar'
-                        ? `عرض ${visibleBooks.length} من ${allFiltered.length} كتاب`
-                        : `Showing ${visibleBooks.length} of ${allFiltered.length} books`}
-                    </p>
-                  </div>
+                    {t.sections.load_more}
+                    {!loadingMore && (
+                      <span className="text-amber-400/70 text-xs font-normal">
+                        {allFiltered.length - visibleCount}+
+                      </span>
+                    )}
+                  </button>
+                ) : (
+                  <p className="text-stone-400 text-sm flex items-center gap-2">
+                    <span className="inline-block w-8 h-px bg-stone-300" />
+                    {t.sections.all_shown}
+                    <span className="inline-block w-8 h-px bg-stone-300" />
+                  </p>
                 )}
+                <p className="text-stone-400 text-xs">
+                  {lang === 'ar'
+                    ? `عرض ${visibleBooks.length} من ${allFiltered.length} كتاب`
+                    : `Showing ${visibleBooks.length} of ${allFiltered.length} books`}
+                </p>
               </div>
-            </section>
-          </>
-        )}
+            )}
+          </div>
+        </section>
       </div>
     </div>
   );

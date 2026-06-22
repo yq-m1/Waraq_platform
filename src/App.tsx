@@ -24,7 +24,6 @@ type AuthModalState = { open: false } | { open: true; mode: 'login' | 'signup' }
 
 function AppInner() {
   const [page, setPage] = useState<Page>({ name: 'home' });
-  const [searchQuery, setSearchQuery] = useState('');
   const [authModal, setAuthModal] = useState<AuthModalState>({ open: false });
 
   function openAuth(mode: 'login' | 'signup') {
@@ -37,7 +36,6 @@ function AppInner() {
 
   function handleBookClick(book: Book) {
     setPage({ name: 'book', bookId: book.id });
-    setSearchQuery('');
   }
 
   function handleBookClickById(bookId: string) {
@@ -47,16 +45,13 @@ function AppInner() {
   function handleNavigate(target: 'home' | 'library' | 'favorites' | 'free-books' | 'recently-viewed' | 'my-reviews') {
     if (target === 'library') {
       setPage({ name: 'home' });
-      setSearchQuery('');
       setTimeout(() => {
         document.getElementById('books')?.scrollIntoView({ behavior: 'smooth' });
       }, 100);
     } else if (target === 'home') {
       setPage({ name: 'home' });
-      setSearchQuery('');
     } else {
       setPage({ name: target });
-      setSearchQuery('');
     }
   }
 
@@ -67,8 +62,7 @@ function AppInner() {
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
+        onBookClick={handleBookClick}
         onOpenAuth={openAuth}
         onNavigate={handleNavigate}
         currentPage={page.name}
@@ -77,7 +71,6 @@ function AppInner() {
       <main className="flex-1">
         {page.name === 'home' && (
           <Home
-            searchQuery={searchQuery}
             onBookClick={handleBookClick}
             onOpenAuth={openAuth}
             onNavigate={handleNavigate}

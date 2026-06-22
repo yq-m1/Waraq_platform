@@ -1,31 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { BookOpen, Search, LogOut, User, X, Menu, Heart, Clock, Star, ChevronDown } from 'lucide-react';
+import {
+  BookOpen, Search, LogOut, User, X, Menu, Heart, Clock,
+  Star, ChevronDown, ChevronRight, Loader2,
+} from 'lucide-react';
 import { useLang } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { supabase, type Book } from '../../lib/supabase';
 
 type ProfilePage = 'favorites' | 'recently-viewed' | 'my-reviews';
 
 type NavbarProps = {
-  onSearchChange: (query: string) => void;
-  searchQuery: string;
+  onBookClick: (book: Book) => void;
   onOpenAuth: (mode: 'login' | 'signup') => void;
   onNavigate: (page: 'home' | 'library' | ProfilePage) => void;
   currentPage: string;
 };
 
-export default function Navbar({
-  onSearchChange,
-  searchQuery,
-  onOpenAuth,
-  onNavigate,
-  currentPage,
-}: NavbarProps) {
+export default function Navbar({ onBookClick, onOpenAuth, onNavigate, currentPage }: NavbarProps) {
   const { t, lang, toggleLang } = useLang();
   const { user, profile, signOut } = useAuth();
   const [scrolled, setScrolled] = useState(() => window.scrollY > 20);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [searchFocused, setSearchFocused] = useState(false);
-  const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -53,48 +48,21 @@ export default function Navbar({
             <div className="w-8 h-8 bg-amber-400 rounded-lg flex items-center justify-center group-hover:bg-amber-300 transition-colors">
               <BookOpen className="w-5 h-5 text-amber-950" />
             </div>
-            <span className="text-white font-bold text-xl tracking-wide" style={{ fontFamily: lang === 'ar' ? 'serif' : 'inherit' }}>
+            <span
+              className="text-white font-bold text-xl tracking-wide"
+              style={{ fontFamily: lang === 'ar' ? 'serif' : 'inherit' }}
+            >
               {lang === 'ar' ? 'وَرَق' : 'Waraq'}
             </span>
           </button>
 
           {/* Search Bar — desktop */}
-          <div className={`hidden md:flex flex-1 max-w-xl relative transition-all duration-200 ${searchFocused ? 'scale-[1.02]' : ''}`}>
-            <div className="relative w-full">
-              <Search
-                className={`absolute top-1/2 -translate-y-1/2 w-4 h-4 transition-colors ${
-                  lang === 'ar' ? 'right-3' : 'left-3'
-                } ${searchFocused ? 'text-amber-400' : 'text-amber-200/60'}`}
-              />
-              <input
-                ref={searchRef}
-                type="text"
-                value={searchQuery}
-                onChange={e => onSearchChange(e.target.value)}
-                onFocus={() => setSearchFocused(true)}
-                onBlur={() => setSearchFocused(false)}
-                placeholder={t.nav.search_placeholder}
-                className={`w-full bg-white/10 border border-white/20 rounded-full py-2 text-sm text-white placeholder-amber-200/50 focus:outline-none focus:border-amber-400 focus:bg-white/15 transition-all ${
-                  lang === 'ar' ? 'pr-9 pl-4' : 'pl-9 pr-4'
-                }`}
-                dir={t.dir}
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => onSearchChange('')}
-                  className={`absolute top-1/2 -translate-y-1/2 text-amber-200/60 hover:text-white transition-colors ${
-                    lang === 'ar' ? 'left-3' : 'right-3'
-                  }`}
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
+          <div className="hidden md:block flex-1 max-w-xl">
+            <SearchBox onBookClick={onBookClick} />
           </div>
 
           {/* Right side actions */}
           <div className="flex items-center gap-2">
-            {/* Language Toggle */}
             <button
               onClick={toggleLang}
               className="px-3 py-1.5 text-xs font-semibold text-amber-200 border border-amber-200/30 rounded-full hover:bg-amber-400/20 hover:text-white hover:border-amber-400/50 transition-all"
@@ -104,14 +72,12 @@ export default function Navbar({
 
             {user ? (
               <div className="flex items-center gap-1">
-                {/* Desktop user dropdown */}
                 <UserDropdown
                   displayName={displayName}
                   lang={lang}
                   onNavigate={(page) => { onNavigate(page); setMobileMenuOpen(false); }}
                   onSignOut={signOut}
                 />
-                {/* Mobile logout shortcut */}
                 <button
                   onClick={signOut}
                   title={t.nav.logout}
@@ -137,7 +103,6 @@ export default function Navbar({
               </div>
             )}
 
-            {/* Mobile menu button */}
             <button
               className="sm:hidden p-2 text-amber-200 hover:text-white transition-colors"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -149,27 +114,7 @@ export default function Navbar({
 
         {/* Mobile Search */}
         <div className="md:hidden pb-3">
-          <div className="relative">
-            <Search className={`absolute top-1/2 -translate-y-1/2 w-4 h-4 text-amber-200/60 ${lang === 'ar' ? 'right-3' : 'left-3'}`} />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={e => onSearchChange(e.target.value)}
-              placeholder={t.nav.search_placeholder}
-              className={`w-full bg-white/10 border border-white/20 rounded-full py-2 text-sm text-white placeholder-amber-200/50 focus:outline-none focus:border-amber-400 transition-all ${
-                lang === 'ar' ? 'pr-9 pl-4' : 'pl-9 pr-4'
-              }`}
-              dir={t.dir}
-            />
-            {searchQuery && (
-              <button
-                onClick={() => onSearchChange('')}
-                className={`absolute top-1/2 -translate-y-1/2 text-amber-200/60 ${lang === 'ar' ? 'left-3' : 'right-3'}`}
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
+          <SearchBox onBookClick={onBookClick} isMobile />
         </div>
 
         {/* Mobile Menu */}
@@ -181,11 +126,13 @@ export default function Navbar({
                   <div className="w-7 h-7 bg-amber-400/20 rounded-full flex items-center justify-center flex-shrink-0">
                     <User className="w-3.5 h-3.5 text-amber-300" />
                   </div>
-                  <span className={`text-amber-200 text-sm font-medium flex-1 ${lang === 'ar' ? 'text-right' : 'text-left'}`}>{displayName}</span>
+                  <span className={`text-amber-200 text-sm font-medium flex-1 ${lang === 'ar' ? 'text-right' : 'text-left'}`}>
+                    {displayName}
+                  </span>
                 </div>
                 {([
-                  { icon: Star,  label: t.profile.my_reviews,     page: 'my-reviews' as ProfilePage },
-                  { icon: Heart, label: t.profile.favorites,       page: 'favorites' as ProfilePage },
+                  { icon: Star,  label: t.profile.my_reviews,     page: 'my-reviews'      as ProfilePage },
+                  { icon: Heart, label: t.profile.favorites,       page: 'favorites'       as ProfilePage },
                   { icon: Clock, label: t.profile.recently_viewed, page: 'recently-viewed' as ProfilePage },
                 ] as const).map(({ icon: Icon, label, page }) => (
                   <button
@@ -233,7 +180,221 @@ export default function Navbar({
   );
 }
 
-// ── UserDropdown sub-component ──────────────────────────────────────────────
+// ── SearchBox ─────────────────────────────────────────────────────────────────
+
+type SearchBoxProps = {
+  onBookClick: (book: Book) => void;
+  isMobile?: boolean;
+};
+
+function SearchBox({ onBookClick, isMobile = false }: SearchBoxProps) {
+  const { t, lang } = useLang();
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<Book[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  // Close dropdown on Escape
+  useEffect(() => {
+    function handler(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        setOpen(false);
+        setQuery('');
+        inputRef.current?.blur();
+      }
+    }
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, []);
+
+  // Debounced Supabase query
+  useEffect(() => {
+    const q = query.trim();
+    if (!q) {
+      setResults([]);
+      setOpen(false);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    const timer = setTimeout(async () => {
+      const { data } = await supabase
+        .from('books')
+        .select('id, title_ar, title_en, cover_url, is_free_to_read')
+        .or(`title_ar.ilike.%${q}%,title_en.ilike.%${q}%`)
+        .limit(8);
+      setResults((data ?? []) as Book[]);
+      setOpen(true);
+      setLoading(false);
+    }, 280);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  function handleSelect(book: Book) {
+    onBookClick(book);
+    setQuery('');
+    setResults([]);
+    setOpen(false);
+    inputRef.current?.blur();
+  }
+
+  const showDropdown = query.trim().length > 0;
+
+  return (
+    <div
+      ref={containerRef}
+      className={`relative transition-all duration-200 ${focused && !isMobile ? 'scale-[1.02]' : ''}`}
+    >
+      {/* Input */}
+      <div className="relative">
+        <Search
+          className={`absolute top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none transition-colors ${
+            lang === 'ar' ? 'right-3' : 'left-3'
+          } ${focused ? 'text-amber-400' : 'text-amber-200/60'}`}
+        />
+        <input
+          ref={inputRef}
+          type="text"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          onFocus={() => {
+            setFocused(true);
+            if (query.trim() && results.length > 0) setOpen(true);
+          }}
+          onBlur={() => setFocused(false)}
+          placeholder={t.nav.search_placeholder}
+          className={`w-full bg-white/10 border border-white/20 rounded-full py-2 text-sm text-white placeholder-amber-200/50 focus:outline-none focus:border-amber-400 focus:bg-white/15 transition-all ${
+            lang === 'ar' ? 'pr-9 pl-9' : 'pl-9 pr-9'
+          }`}
+          dir={t.dir}
+        />
+        {query && (
+          <button
+            onMouseDown={e => { e.preventDefault(); setQuery(''); setOpen(false); }}
+            className={`absolute top-1/2 -translate-y-1/2 text-amber-200/60 hover:text-white transition-colors ${
+              lang === 'ar' ? 'left-3' : 'right-3'
+            }`}
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
+
+      {/* Dropdown */}
+      {showDropdown && (
+        <div
+          className={`absolute left-0 right-0 mt-2 z-[60] bg-amber-950 border border-amber-800/40 rounded-2xl shadow-2xl shadow-black/60 overflow-hidden flex flex-col ${
+            isMobile ? 'max-h-64' : 'max-h-[440px]'
+          }`}
+          dir={lang === 'ar' ? 'rtl' : 'ltr'}
+        >
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-5 h-5 text-amber-400 animate-spin" />
+            </div>
+          ) : results.length === 0 ? (
+            <div className="py-7 text-center text-amber-300/50 text-sm" style={{ fontFamily: lang === 'ar' ? 'serif' : 'inherit' }}>
+              {lang === 'ar' ? `لا نتائج لـ "${query}"` : `No results for "${query}"`}
+            </div>
+          ) : (
+            <>
+              <div className="overflow-y-auto flex-1 py-1.5">
+                {results.map(book => (
+                  <SearchResultRow
+                    key={book.id}
+                    book={book}
+                    lang={lang}
+                    onSelect={handleSelect}
+                  />
+                ))}
+              </div>
+              {results.length === 8 && (
+                <div className="px-4 py-2.5 border-t border-amber-800/30 text-center text-xs text-amber-400/50"
+                  style={{ fontFamily: lang === 'ar' ? 'serif' : 'inherit' }}
+                >
+                  {lang === 'ar' ? 'اكتب أكثر لتضييق النتائج' : 'Type more to narrow results'}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── SearchResultRow ────────────────────────────────────────────────────────────
+
+function SearchResultRow({
+  book,
+  lang,
+  onSelect,
+}: {
+  book: Book;
+  lang: string;
+  onSelect: (book: Book) => void;
+}) {
+  const [imgFailed, setImgFailed] = useState(false);
+  const title = lang === 'ar' ? book.title_ar : book.title_en;
+  const showImg = !!book.cover_url && !imgFailed;
+
+  return (
+    <button
+      onMouseDown={e => { e.preventDefault(); onSelect(book); }}
+      className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-amber-800/30 transition-colors group"
+    >
+      {/* Mini cover */}
+      <div className="w-9 h-[52px] rounded-lg overflow-hidden flex-shrink-0 bg-amber-900/40 flex items-center justify-center">
+        {showImg ? (
+          <img
+            src={book.cover_url!}
+            alt={title}
+            className="w-full h-full object-cover"
+            onError={() => setImgFailed(true)}
+          />
+        ) : (
+          <BookOpen className="w-4 h-4 text-amber-600/40" />
+        )}
+      </div>
+
+      {/* Title + badge */}
+      <div className={`flex-1 min-w-0 ${lang === 'ar' ? 'text-right' : 'text-left'}`}>
+        <p className="text-amber-100 text-sm font-medium truncate group-hover:text-white transition-colors">
+          {title}
+        </p>
+        <span
+          className={`inline-flex items-center gap-1 mt-1 text-xs font-medium px-2 py-0.5 rounded-full ${
+            book.is_free_to_read
+              ? 'bg-emerald-500/20 text-emerald-400'
+              : 'bg-stone-700/40 text-stone-400'
+          }`}
+        >
+          {book.is_free_to_read
+            ? (lang === 'ar' ? 'مجاني' : 'Free')
+            : (lang === 'ar' ? 'مدفوع' : 'Paid')}
+        </span>
+      </div>
+
+      <ChevronRight className="w-4 h-4 text-amber-700/40 group-hover:text-amber-400/70 transition-colors flex-shrink-0" />
+    </button>
+  );
+}
+
+// ── UserDropdown ──────────────────────────────────────────────────────────────
 
 type DropdownProps = {
   displayName: string;
@@ -249,9 +410,7 @@ function UserDropdown({ displayName, lang, onNavigate, onSignOut }: DropdownProp
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -265,11 +424,6 @@ function UserDropdown({ displayName, lang, onNavigate, onSignOut }: DropdownProp
 
   const isAr = lang === 'ar';
 
-  // Renders one menu row correctly for both LTR and RTL.
-  // Arabic (dir="rtl"): flex-start resolves to the RIGHT, so DOM order [label][icon]
-  //   puts the label on the right and the icon on the left, with space-x-reverse spacing.
-  // English (dir="ltr"): flex-start resolves to the LEFT, so DOM order [icon][label]
-  //   puts the icon on the left and the label to its right, with space-x spacing.
   function MenuItem({
     icon: Icon,
     label,
@@ -309,7 +463,6 @@ function UserDropdown({ displayName, lang, onNavigate, onSignOut }: DropdownProp
 
   return (
     <div className="relative hidden sm:block" ref={ref}>
-      {/* Trigger pill */}
       <button
         onClick={() => setOpen(o => !o)}
         className="flex items-center gap-2 px-3 py-1.5 bg-amber-400/20 hover:bg-amber-400/30 rounded-full transition-all"
@@ -321,13 +474,11 @@ function UserDropdown({ displayName, lang, onNavigate, onSignOut }: DropdownProp
         <ChevronDown className={`w-3 h-3 text-amber-300/60 transition-transform duration-200 flex-shrink-0 ${open ? 'rotate-180' : ''}`} />
       </button>
 
-      {/* Dropdown panel */}
       <div
         className={`absolute top-[calc(100%+8px)] w-64 left-auto right-0 bg-amber-950 border border-amber-800/40 rounded-2xl shadow-2xl shadow-black/30 overflow-hidden z-50 transition-all duration-200 origin-top-right ${
           open ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'
         }`}
       >
-        {/* Header */}
         <div
           dir={isAr ? 'rtl' : 'ltr'}
           className="flex items-center space-x-2.5 px-4 py-3 border-b border-amber-800/30"
@@ -340,7 +491,6 @@ function UserDropdown({ displayName, lang, onNavigate, onSignOut }: DropdownProp
           </p>
         </div>
 
-        {/* Menu items */}
         <div className="py-1">
           {items.map(({ icon: Icon, label, page }) => (
             <MenuItem
@@ -352,7 +502,6 @@ function UserDropdown({ displayName, lang, onNavigate, onSignOut }: DropdownProp
           ))}
         </div>
 
-        {/* Logout */}
         <div className="border-t border-amber-800/30 py-1">
           <MenuItem
             icon={LogOut}
