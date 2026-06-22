@@ -31,6 +31,7 @@ export const en: Translations = {
     filter_recent_reviews: 'Recent Reviews',
     load_more: 'Show More Books',
     all_shown: 'All books shown',
+    top_rated: 'Top 10 Rated Books',
   },
   book: {
     rating: 'Rating',

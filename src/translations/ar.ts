@@ -29,6 +29,7 @@ export const ar = {
     filter_recent_reviews: 'مراجعات حديثة',
     load_more: 'عرض المزيد من الكتب',
     all_shown: 'تم عرض جميع الكتب',
+    top_rated: 'أعلى 10 كتب تقييماً',
   },
   book: {
     rating: 'التقييم',

@@ -5,6 +5,7 @@ import { useLang } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import BookCard from '../components/Books/BookCard';
 import FreeBookCarousel from '../components/Books/FreeBookCarousel';
+import TopRatedCarousel from '../components/Books/TopRatedCarousel';
 
 const PAGE_SIZE = 8;
 
@@ -64,6 +65,12 @@ export default function Home({ searchQuery, onBookClick, onOpenAuth, onNavigate 
     : books;
 
   const freeBooks = books.filter(b => b.is_free_to_read);
+
+  // Top 10 by average rating — only books that have at least one review
+  const topRated = [...books]
+    .filter(b => (b.avg_rating ?? 0) > 0)
+    .sort((a, b) => (b.avg_rating ?? 0) - (a.avg_rating ?? 0))
+    .slice(0, 10);
 
   function applyFilter(source: Book[]): Book[] {
     switch (activeFilter) {
@@ -199,6 +206,11 @@ export default function Home({ searchQuery, onBookClick, onOpenAuth, onNavigate 
                 onBookClick={onBookClick}
                 onViewAll={() => onNavigate?.('free-books')}
               />
+            )}
+
+            {/* Top 10 Rated Books */}
+            {!loading && topRated.length > 0 && (
+              <TopRatedCarousel books={topRated} onBookClick={onBookClick} />
             )}
 
             {/* All Books — with filter tabs + load more */}
