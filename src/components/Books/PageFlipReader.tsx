@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect } from 'react';
+import { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import React from 'react';
 import HTMLFlipBook from 'react-pageflip';
 import { ChevronLeft, ChevronRight, X, BookOpen } from 'lucide-react';
@@ -31,9 +31,6 @@ const BookPage = React.forwardRef<
       position: 'relative',
       overflow: 'hidden',
       boxSizing: 'border-box',
-      // Counter-mirror the content so text reads correctly after the
-      // book container is mirrored for RTL.
-      transform: isRTL ? 'scaleX(-1)' : undefined,
     }}
   >
     {/* Top decorative rule */}
@@ -170,8 +167,31 @@ export default function PageFlipReader({ pages, title, onClose }: Props) {
   const [pageH, setPageH] = useState(540);
 
   const totalPages = pages.length;
+
+  // react-pageflip has no native RTL support. For Arabic, we swap adjacent
+  // page pairs in the array so the library's even-index (LEFT slot) gets the
+  // higher-numbered page and the odd-index (RIGHT slot) gets the lower-numbered
+  // page. Result: page 1 lands on the right of spread 1, page 3 on the right
+  // of spread 2, etc. — correct Arabic book layout, no CSS transforms needed.
+  const renderedPages = useMemo(() => {
+    if (!isRTL) return pages.map((text, i) => ({ text, pageNum: i + 1 }));
+    const result: { text: string; pageNum: number }[] = [];
+    for (let i = 0; i < pages.length; i += 2) {
+      if (i + 1 < pages.length) {
+        result.push({ text: pages[i + 1], pageNum: i + 2 }); // LEFT slot
+        result.push({ text: pages[i],     pageNum: i + 1 }); // RIGHT slot
+      } else {
+        result.push({ text: '',       pageNum: 0     }); // blank LEFT pad
+        result.push({ text: pages[i], pageNum: i + 1 }); // RIGHT slot
+      }
+    }
+    return result;
+  }, [pages, isRTL]);
+
+  const renderedCount = renderedPages.length;
   const canGoPrev = currentPage > 0;
-  const canGoNext = currentPage < totalPages - 1;
+  // Last reachable left-page index is renderedCount-2 (final spread)
+  const canGoNext = currentPage < renderedCount - 2;
 
   // Measure the stage and derive page dimensions
   useEffect(() => {
@@ -272,16 +292,12 @@ export default function PageFlipReader({ pages, title, onClose }: Props) {
           <ChevronLeft className="w-5 h-5" />
         </ArrowButton>
 
-        {/* Book container: outer shadow lifts it off the dark background.
-            scaleX(-1) mirrors the entire book for RTL so that:
-            - pages[0] lands on the screen-right (correct for Arabic page 1)
-            - the flip animation sweeps left→right (correct Arabic page turn) */}
+        {/* Book container: outer shadow lifts the spread off the dark stage */}
         <div
           style={{
             position: 'relative',
             width: pageW * 2,
             height: pageH,
-            transform: isRTL ? 'scaleX(-1)' : undefined,
             boxShadow:
               '0 28px 60px rgba(0,0,0,0.72), 0 6px 20px rgba(0,0,0,0.5), 0 1px 4px rgba(0,0,0,0.35)',
           }}
@@ -329,10 +345,10 @@ export default function PageFlipReader({ pages, title, onClose }: Props) {
             className=""
             onFlip={handleFlip}
           >
-            {pages.map((text, i) => (
+            {renderedPages.map(({ text, pageNum }, i) => (
               <BookPage
                 key={i}
-                pageNumber={i + 1}
+                pageNumber={pageNum}
                 totalPages={totalPages}
                 text={text}
                 isRTL={isRTL}
@@ -379,24 +395,31 @@ export default function PageFlipReader({ pages, title, onClose }: Props) {
 
           {totalPages <= 20 ? (
             <div className="flex items-center gap-1" dir="ltr">
-              {pages.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => jumpToPage(i)}
-                  aria-label={`Go to page ${i + 1}`}
-                  style={{
-                    width: i === currentPage ? 18 : 7,
-                    height: 7,
-                    borderRadius: 9999,
-                    border: 'none',
-                    cursor: 'pointer',
-                    padding: 0,
-                    background:
-                      i === currentPage ? '#f59e0b' : 'rgba(255,255,255,0.22)',
-                    transition: 'all 0.2s',
-                  }}
-                />
-              ))}
+              {pages.map((_, i) => {
+                // For RTL, two original pages share a spread; target the
+                // left-page index of that spread (always even).
+                const target = isRTL ? Math.floor(i / 2) * 2 : i;
+                const active = isRTL
+                  ? Math.floor(i / 2) * 2 === currentPage
+                  : i === currentPage;
+                return (
+                  <button
+                    key={i}
+                    onClick={() => jumpToPage(target)}
+                    aria-label={`Go to page ${i + 1}`}
+                    style={{
+                      width: active ? 18 : 7,
+                      height: 7,
+                      borderRadius: 9999,
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: 0,
+                      background: active ? '#f59e0b' : 'rgba(255,255,255,0.22)',
+                      transition: 'all 0.2s',
+                    }}
+                  />
+                );
+              })}
             </div>
           ) : (
             <input
