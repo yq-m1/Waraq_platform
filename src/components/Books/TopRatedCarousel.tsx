@@ -1,16 +1,14 @@
-import { useRef, useEffect, useState } from 'react';
-import {
-  motion,
-  useMotionValue,
-  useAnimationFrame,
-} from 'framer-motion';
+import { useRef, useEffect, useState, useMemo } from 'react';
+import { motion, useMotionValue, useAnimationFrame } from 'framer-motion';
 import { Trophy, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Book } from '../../lib/supabase';
 import { useLang } from '../../contexts/LanguageContext';
 import StarRating from './StarRating';
 
-// Pixels per second — increase for a faster belt
-const SPEED = 48;
+// Pixels per second for the auto-scroll
+const SPEED = 50;
+
+const CARD_GAP = 12; // px — must match the gap value used on the track
 
 type Props = {
   books: Book[];
@@ -18,22 +16,20 @@ type Props = {
 };
 
 const MEDAL = [
-  { gradient: 'from-yellow-400 to-amber-300', text: 'text-amber-900' }, // gold
-  { gradient: 'from-slate-300 to-slate-200',  text: 'text-slate-700' }, // silver
-  { gradient: 'from-orange-600 to-amber-500', text: 'text-white'     }, // bronze
+  { gradient: 'from-yellow-400 to-amber-300', text: 'text-amber-900' },
+  { gradient: 'from-slate-300 to-slate-200',  text: 'text-slate-700' },
+  { gradient: 'from-orange-600 to-amber-500', text: 'text-white'     },
 ];
 
 // ─── Card ────────────────────────────────────────────────────────────────────
 function RankedCard({
   book,
   rank,
-  eager,
   onClick,
 }: {
   book: Book;
   rank: number;
-  eager: boolean;
-  onClick: (book: Book) => void;
+  onClick: (b: Book) => void;
 }) {
   const { lang } = useLang();
   const [imgFailed, setImgFailed] = useState(false);
@@ -42,35 +38,34 @@ function RankedCard({
   const medal = rank <= 3 ? MEDAL[rank - 1] : null;
 
   return (
+    // whileHover lifts the card toward the viewer with rotateY + scale.
+    // perspective on the container gives this the real 3D depth.
     <motion.button
       onClick={() => onClick(book)}
-      // Lift the card toward the viewer on hover (works inside preserve-3d track)
-      whileHover={{ scale: 1.07, z: 50 }}
-      transition={{ type: 'spring', stiffness: 340, damping: 28 }}
-      className="relative w-full rounded-2xl overflow-hidden bg-white/10 border border-white/10
-                 text-start cursor-pointer"
-      style={{ transformStyle: 'preserve-3d' }}
+      whileHover={{ scale: 1.07, rotateY: 6, z: 40 }}
+      transition={{ type: 'spring', stiffness: 320, damping: 26 }}
+      className="relative w-full rounded-2xl overflow-hidden border border-white/10 bg-white/10 text-start"
+      style={{ transformOrigin: 'center center', cursor: 'pointer' }}
     >
-      {/* Cover — aspect-[2/3] reserves space before image loads (no CLS) */}
+      {/* Cover: aspect-[2/3] reserves the height before images load (no CLS) */}
       <div className="relative aspect-[2/3] overflow-hidden bg-stone-800">
         {book.cover_url && !imgFailed ? (
           <img
             src={book.cover_url}
             alt={title}
-            loading={eager ? 'eager' : 'lazy'}
             className="w-full h-full object-cover"
             onError={() => setImgFailed(true)}
           />
         ) : (
           <CoverFallback title={title} />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
         {/* Rank badge */}
         <div
           className={[
-            'absolute top-2 start-2 w-7 h-7 rounded-full flex items-center justify-center',
-            'text-xs font-black shadow-lg ring-1',
+            'absolute top-2 start-2 w-7 h-7 rounded-full',
+            'flex items-center justify-center text-xs font-black shadow-lg ring-1',
             medal
               ? `bg-gradient-to-br ${medal.gradient} ${medal.text} ring-white/40`
               : 'bg-stone-900/80 text-amber-300 ring-amber-400/30',
@@ -80,7 +75,6 @@ function RankedCard({
         </div>
       </div>
 
-      {/* Info */}
       <div className="p-3">
         <h3
           className="font-bold text-white/90 text-xs leading-snug line-clamp-2 mb-2"
@@ -103,54 +97,59 @@ function CoverFallback({ title }: { title: string }) {
   const palette = ['#78350f', '#1e3a5f', '#14532d', '#4a1942', '#7f1d1d'] as const;
   const bg = palette[(title.charCodeAt(0) || 0) % palette.length];
   return (
-    <div className="w-full h-full flex flex-col items-center justify-center gap-2 select-none" style={{ background: bg }}>
+    <div
+      className="w-full h-full flex flex-col items-center justify-center gap-2 select-none"
+      style={{ background: bg }}
+    >
       <span className="text-4xl font-bold text-white/20">{title.charAt(0)}</span>
-      <span className="text-white/50 text-xs text-center px-3 leading-snug line-clamp-3" style={{ fontFamily: 'serif' }}>
+      <span
+        className="text-white/50 text-xs text-center px-3 leading-snug line-clamp-3"
+        style={{ fontFamily: 'serif' }}
+      >
         {title}
       </span>
     </div>
   );
 }
 
-// ─── Main carousel ───────────────────────────────────────────────────────────
+// ─── Carousel ────────────────────────────────────────────────────────────────
 export default function TopRatedCarousel({ books, onBookClick }: Props) {
   const { t, lang } = useLang();
   const isRTL = lang === 'ar';
 
-  // Triple the list so there is always content on both sides of the reset seam
-  const tripled = [...books, ...books, ...books];
+  // Double the list — one seamless visual repeat is all we need
+  const doubled = useMemo(() => [...books, ...books], [books]);
 
-  const trackRef = useRef<HTMLDivElement>(null);
-  const x = useMotionValue(0);
-
-  // offsetLeft of the first card in the SECOND copy — this is the seamless reset point
+  const trackRef   = useRef<HTMLDivElement>(null);
+  const x          = useMotionValue(0);
+  // Distance (px) of one full set of cards, measured from the DOM
   const [loopWidth, setLoopWidth] = useState(0);
 
+  // Measure on first render and whenever the window resizes
   useEffect(() => {
     const measure = () => {
       const el = trackRef.current;
       if (!el || el.children.length < books.length + 1) return;
-      const secondCopyStart = el.children[books.length] as HTMLElement;
-      setLoopWidth(secondCopyStart.offsetLeft);
+      // offsetLeft of the first card in the second copy = exact loop-reset point
+      setLoopWidth((el.children[books.length] as HTMLElement).offsetLeft);
     };
-    const id = setTimeout(measure, 80);
+    const id = setTimeout(measure, 150); // wait for layout
     window.addEventListener('resize', measure);
     return () => { clearTimeout(id); window.removeEventListener('resize', measure); };
   }, [books]);
 
-  // ── Infinite linear scroll ────────────────────────────────────────────────
-  // Moving rightward by SPEED px/s means x decreases (left shift), cards go right→left.
+  // Drive the x motion value at a constant pixel-per-second rate each frame
   useAnimationFrame((_, delta) => {
     if (loopWidth === 0) return;
     let next = x.get() - (delta / 1000) * SPEED;
-    // Seamless: once we've scrolled past one full copy, jump back by exactly loopWidth
+    // Seamless: at -loopWidth the visual content is identical to 0 (second copy = first copy)
     if (next <= -loopWidth) next += loopWidth;
     x.set(next);
   });
 
-  // Manual arrow: nudge by one card-width, animation continues from new position
+  // Arrow: skip forward / back by one card-width without stopping the belt
   const nudge = (forward: boolean) => {
-    if (loopWidth === 0) return;
+    if (!loopWidth) return;
     const step = loopWidth / books.length;
     let next = x.get() + (forward ? -step : step);
     if (next <= -loopWidth) next += loopWidth;
@@ -158,7 +157,7 @@ export default function TopRatedCarousel({ books, onBookClick }: Props) {
     x.set(next);
   };
 
-  if (books.length === 0) return null;
+  if (!books.length) return null;
 
   return (
     <section
@@ -174,7 +173,7 @@ export default function TopRatedCarousel({ books, onBookClick }: Props) {
       />
       <div className="pointer-events-none absolute -top-10 left-1/3 w-96 h-64 bg-amber-500/8 rounded-full blur-3xl" />
 
-      {/* ── Header (constrained to max-w) ── */}
+      {/* ── Header ── */}
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-8">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -192,7 +191,7 @@ export default function TopRatedCarousel({ books, onBookClick }: Props) {
             </span>
           </div>
 
-          {/* Nav buttons — dir=ltr so ‹ always means "go back" */}
+          {/* Arrows — always dir=ltr so ‹ = "back" and › = "forward" */}
           <div className="flex items-center gap-2" dir="ltr">
             <button
               onClick={() => nudge(false)}
@@ -212,66 +211,60 @@ export default function TopRatedCarousel({ books, onBookClick }: Props) {
         </div>
       </div>
 
-      {/* ── 3D ticker stage ── */}
       {/*
-        perspective on the container projects 3D depth onto the track.
-        rotateX on the track tilts the belt away at the top — classic "3D conveyor" look.
-        transformOrigin below center means the pivot is below the cards, so they tilt
-        naturally (bottom stays close, top recedes into the distance).
-        preserve-3d is propagated to card children so whileHover z-lift works.
+        ── 3D Ticker Stage ──
+        Key layout rules:
+          • dir="ltr"            → cards always lay out left-to-right regardless of page lang
+          • overflow-hidden      → clips the overflowing doubled cards
+          • perspective          → enables real CSS 3D for card hover (rotateY + z)
+          • track: width=max-content + flexWrap=nowrap → track stretches to fit ALL cards in one row
+          • card containers: flex-shrink=0 + explicit width → cards never get squeezed
       */}
       <div
         dir="ltr"
-        className="relative"
-        style={{
-          perspective: '1100px',
-          WebkitPerspective: '1100px',
-          perspectiveOrigin: '50% 50%',
-        }}
+        className="relative overflow-hidden"
+        style={{ perspective: '1000px' }}
       >
         <motion.div
           ref={trackRef}
-          className="flex gap-3 will-change-transform"
           style={{
             x,
-            rotateX: -7,
-            transformOrigin: 'center 170%',
-            transformStyle: 'preserve-3d',
+            display: 'flex',
+            flexWrap: 'nowrap',
+            gap: `${CARD_GAP}px`,
+            // max-content prevents the flex container from collapsing to the
+            // viewport width, which would force items to stack or squeeze
+            width: 'max-content',
           }}
         >
-          {tripled.map((book, i) => (
+          {doubled.map((book, i) => (
             <div
               key={`${book.id}-${i}`}
-              // Widths tuned so 4 cards show on mobile, 5 on desktop
-              // w-20=80px  → 375px÷96px ≈ 3.9 ≈ 4 cards  ✓
-              // sm:w-36    → 640px÷152px ≈ 4.2 ≈ 4–5      ✓
-              // md:w-44    → 768px÷192px = 4.0             ✓
-              // lg:w-52    → 1024px÷224px ≈ 4.6 ≈ 5       ✓
-              className="flex-shrink-0 w-20 sm:w-36 md:w-44 lg:w-52"
+              // flex-shrink-0 ensures cards never shrink below their set width.
+              // Responsive widths: aim for ~4 visible on mobile, ~5 on desktop.
+              // w-24=96px  → 375px÷108px ≈ 3.5 visible
+              // sm:w-36    → 640px÷156px ≈ 4.1 visible
+              // md:w-44    → 768px÷192px ≈ 4.0 visible
+              // lg:w-52    → 1024px÷220px ≈ 4.7 visible  ✓
+              className="flex-shrink-0 w-24 sm:w-36 md:w-44 lg:w-52"
             >
               <RankedCard
                 book={book}
                 rank={(i % books.length) + 1}
-                eager={i < 10}
                 onClick={onBookClick}
               />
             </div>
           ))}
         </motion.div>
 
-        {/* Left fade — matches section's left edge colour (amber-950) */}
+        {/* Edge fades — colour-matched to the section's gradient endpoints */}
         <div
-          className="pointer-events-none absolute inset-y-0 left-0 w-16 sm:w-28"
-          style={{
-            background: 'linear-gradient(to right, #1c0a00 0%, transparent 100%)',
-          }}
+          className="pointer-events-none absolute inset-y-0 left-0 w-14 sm:w-24"
+          style={{ background: 'linear-gradient(to right, #1c0a00, transparent)' }}
         />
-        {/* Right fade — matches section's right edge colour (stone-950) */}
         <div
-          className="pointer-events-none absolute inset-y-0 right-0 w-16 sm:w-28"
-          style={{
-            background: 'linear-gradient(to left, #0c0a09 0%, transparent 100%)',
-          }}
+          className="pointer-events-none absolute inset-y-0 right-0 w-14 sm:w-24"
+          style={{ background: 'linear-gradient(to left, #0c0a09, transparent)' }}
         />
       </div>
     </section>
