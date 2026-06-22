@@ -166,8 +166,8 @@ export default function TopRatedCarousel({ books, onBookClick }: Props) {
 
   return (
     <section
-      className="py-14 relative bg-gradient-to-br from-amber-950 via-stone-900 to-stone-950"
-      style={{ overflow: 'hidden' }}
+      className="relative bg-gradient-to-br from-amber-950 via-stone-900 to-stone-950"
+      style={{ overflow: 'hidden', paddingTop: '3.5rem', paddingBottom: '5rem' }}
       dir={t.dir}
     >
       <style>{keyframes}</style>
@@ -226,7 +226,7 @@ export default function TopRatedCarousel({ books, onBookClick }: Props) {
       */}
       <div
         dir="ltr"
-        style={{ overflow: 'hidden', whiteSpace: 'nowrap' }}
+        style={{ overflow: 'hidden', whiteSpace: 'nowrap', paddingBottom: 8 }}
         onMouseEnter={() => setPaused(true)}
         onMouseLeave={() => setPaused(false)}
       >
@@ -266,6 +266,14 @@ export default function TopRatedCarousel({ books, onBookClick }: Props) {
         style={{
           pointerEvents: 'none', position: 'absolute', inset: '0 0 0 auto',
           width: 80, background: 'linear-gradient(to left, #0c0a09, transparent)',
+        }}
+      />
+
+      {/* Bottom fade — blends dark section into the stone-50 background below */}
+      <div
+        style={{
+          pointerEvents: 'none', position: 'absolute', bottom: 0, left: 0, right: 0,
+          height: 96, background: 'linear-gradient(to bottom, transparent, #fafaf9)',
         }}
       />
     </section>

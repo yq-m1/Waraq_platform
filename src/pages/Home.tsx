@@ -214,11 +214,11 @@ export default function Home({ searchQuery, onBookClick, onOpenAuth, onNavigate 
             )}
 
             {/* All Books — with filter tabs + load more */}
-            <section className="py-12">
+            <section className="py-14 bg-stone-50 border-t border-stone-100">
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
                 {/* Section header */}
-                <div className="flex items-center gap-3 mb-6">
+                <div className="flex items-center gap-3 mb-8">
                   <div className="w-1 h-7 bg-amber-400 rounded-full" />
                   <h2
                     className="text-2xl font-bold text-stone-800"

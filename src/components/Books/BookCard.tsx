@@ -21,7 +21,7 @@ export default function BookCard({ book, onClick }: BookCardProps) {
   return (
     <button
       onClick={() => onClick(book)}
-      className="group relative bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-stone-100 text-start w-full"
+      className="group relative bg-white rounded-2xl overflow-hidden shadow hover:shadow-xl transition-all duration-300 hover:-translate-y-1.5 border border-stone-100 hover:border-stone-200 text-start w-full"
     >
       {/* Cover */}
       <div className="relative overflow-hidden aspect-[2/3]">
