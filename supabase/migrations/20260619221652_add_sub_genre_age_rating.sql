@@ -1,0 +1,3 @@
+ALTER TABLE books
+  ADD COLUMN IF NOT EXISTS sub_genre TEXT,
+  ADD COLUMN IF NOT EXISTS age_rating TEXT;
