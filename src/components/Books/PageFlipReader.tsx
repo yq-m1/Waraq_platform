@@ -37,9 +37,9 @@ const BookPage = React.forwardRef<
     <div
       style={{
         position: 'absolute',
-        top: 20,
-        left: 24,
-        right: 24,
+        top: 22,
+        left: 32,
+        right: 32,
         height: 1,
         backgroundColor: 'rgba(110,75,15,0.22)',
       }}
@@ -49,9 +49,9 @@ const BookPage = React.forwardRef<
     <div
       style={{
         position: 'absolute',
-        bottom: 28,
-        left: 24,
-        right: 24,
+        bottom: 30,
+        left: 32,
+        right: 32,
         height: 1,
         backgroundColor: 'rgba(110,75,15,0.22)',
       }}
@@ -75,30 +75,34 @@ const BookPage = React.forwardRef<
       {pageNumber} / {totalPages}
     </div>
 
-    {/* Text content */}
+    {/* Text content — 32px inset on all sides keeps text strictly inside the paper */}
     <div
       style={{
         position: 'absolute',
-        top: 34,
-        bottom: 42,
-        left: 24,
-        right: 24,
+        top: 38,
+        bottom: 46,
+        left: 32,
+        right: 32,
         overflow: 'hidden',
+        boxSizing: 'border-box',
         direction: isRTL ? 'rtl' : 'ltr',
       }}
     >
       <p
         style={{
           margin: 0,
+          padding: 0,
           fontFamily: isRTL
             ? "'Noto Naskh Arabic', Georgia, serif"
             : 'Georgia, "Times New Roman", serif',
           fontSize,
           lineHeight: 2,
-          color: PAGE_TEXT,
+          color: '#000000',
           whiteSpace: 'pre-wrap',
           wordBreak: 'break-word',
           textAlign: 'justify',
+          width: '100%',
+          boxSizing: 'border-box',
         }}
       >
         {text}
