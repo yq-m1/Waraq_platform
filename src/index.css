@@ -8,6 +8,11 @@
   html {
     font-family: 'Noto Naskh Arabic', 'Segoe UI', system-ui, sans-serif;
     scroll-behavior: smooth;
+    overflow-x: hidden;
+  }
+
+  body {
+    overflow-x: hidden;
   }
 
   html[lang='en'] {

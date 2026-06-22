@@ -21,6 +21,7 @@ export default function Navbar({ onBookClick, onOpenAuth, onNavigate, currentPag
   const { user, profile, signOut } = useAuth();
   const [scrolled, setScrolled] = useState(() => window.scrollY > 20);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -30,54 +31,78 @@ export default function Navbar({ onBookClick, onOpenAuth, onNavigate, currentPag
 
   const displayName = profile?.username || user?.email?.split('@')[0] || '';
 
+  function handleNavigate(page: 'home' | 'library' | ProfilePage) {
+    onNavigate(page);
+    setMobileMenuOpen(false);
+    setMobileSearchOpen(false);
+  }
+
   return (
     <nav
       className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${
         scrolled
           ? 'bg-amber-950/95 backdrop-blur-md shadow-lg shadow-amber-950/20'
-          : 'bg-transparent'
+          : 'bg-amber-950/80 backdrop-blur-sm'
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 gap-4">
+
+        {/* ── Main nav row ── */}
+        <div className="flex items-center justify-between h-14 sm:h-16 gap-2 sm:gap-4">
+
           {/* Logo */}
           <button
-            onClick={() => onNavigate('home')}
+            onClick={() => handleNavigate('home')}
             className="flex items-center gap-2 flex-shrink-0 group"
           >
-            <div className="w-8 h-8 bg-amber-400 rounded-lg flex items-center justify-center group-hover:bg-amber-300 transition-colors">
-              <BookOpen className="w-5 h-5 text-amber-950" />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 bg-amber-400 rounded-lg flex items-center justify-center group-hover:bg-amber-300 transition-colors">
+              <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-amber-950" />
             </div>
             <span
-              className="text-white font-bold text-xl tracking-wide"
+              className="text-white font-bold text-lg sm:text-xl tracking-wide"
               style={{ fontFamily: lang === 'ar' ? 'serif' : 'inherit' }}
             >
               {lang === 'ar' ? 'وَرَق' : 'Waraq'}
             </span>
           </button>
 
-          {/* Search Bar — desktop */}
+          {/* Desktop search */}
           <div className="hidden md:block flex-1 max-w-xl">
             <SearchBox onBookClick={onBookClick} />
           </div>
 
-          {/* Right side actions */}
-          <div className="flex items-center gap-2">
+          {/* Right-side actions */}
+          <div className="flex items-center gap-1 sm:gap-2">
+
+            {/* Mobile search toggle */}
+            <button
+              onClick={() => { setMobileSearchOpen(o => !o); setMobileMenuOpen(false); }}
+              className="md:hidden p-2 text-amber-200 hover:text-white hover:bg-white/10 rounded-full transition-all"
+              aria-label="Toggle search"
+            >
+              {mobileSearchOpen
+                ? <X className="w-4 h-4" />
+                : <Search className="w-4 h-4" />}
+            </button>
+
+            {/* Language toggle */}
             <button
               onClick={toggleLang}
-              className="px-3 py-1.5 text-xs font-semibold text-amber-200 border border-amber-200/30 rounded-full hover:bg-amber-400/20 hover:text-white hover:border-amber-400/50 transition-all"
+              className="px-2.5 py-1.5 text-xs font-semibold text-amber-200 border border-amber-200/30 rounded-full hover:bg-amber-400/20 hover:text-white hover:border-amber-400/50 transition-all"
             >
               {lang === 'ar' ? 'EN' : 'ع'}
             </button>
 
             {user ? (
               <div className="flex items-center gap-1">
+                {/* Desktop user dropdown */}
                 <UserDropdown
                   displayName={displayName}
                   lang={lang}
-                  onNavigate={(page) => { onNavigate(page); setMobileMenuOpen(false); }}
+                  onNavigate={handleNavigate}
                   onSignOut={signOut}
                 />
+                {/* Mobile logout shortcut */}
                 <button
                   onClick={signOut}
                   title={t.nav.logout}
@@ -90,34 +115,42 @@ export default function Navbar({ onBookClick, onOpenAuth, onNavigate, currentPag
               <div className="hidden sm:flex items-center gap-2">
                 <button
                   onClick={() => onOpenAuth('login')}
-                  className="px-4 py-1.5 text-sm text-amber-200 hover:text-white transition-colors"
+                  className="px-3 py-1.5 text-sm text-amber-200 hover:text-white transition-colors"
                 >
                   {t.nav.login}
                 </button>
                 <button
                   onClick={() => onOpenAuth('signup')}
-                  className="px-4 py-1.5 text-sm bg-amber-400 text-amber-950 font-semibold rounded-full hover:bg-amber-300 transition-colors"
+                  className="px-3 py-1.5 text-sm bg-amber-400 text-amber-950 font-semibold rounded-full hover:bg-amber-300 transition-colors"
                 >
                   {t.nav.signup}
                 </button>
               </div>
             )}
 
+            {/* Hamburger */}
             <button
               className="sm:hidden p-2 text-amber-200 hover:text-white transition-colors"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              onClick={() => { setMobileMenuOpen(o => !o); setMobileSearchOpen(false); }}
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
         </div>
 
-        {/* Mobile Search */}
-        <div className="md:hidden pb-3">
-          <SearchBox onBookClick={onBookClick} isMobile />
-        </div>
+        {/* ── Mobile search panel (collapsible) ── */}
+        {mobileSearchOpen && (
+          <div className="md:hidden pb-3 pt-1">
+            <SearchBox
+              onBookClick={onBookClick}
+              onAfterSelect={() => setMobileSearchOpen(false)}
+              isMobile
+              autoFocus
+            />
+          </div>
+        )}
 
-        {/* Mobile Menu */}
+        {/* ── Mobile menu ── */}
         {mobileMenuOpen && (
           <div className="sm:hidden pb-4 border-t border-white/10 pt-3 space-y-1" dir={t.dir}>
             {user ? (
@@ -137,7 +170,7 @@ export default function Navbar({ onBookClick, onOpenAuth, onNavigate, currentPag
                 ] as const).map(({ icon: Icon, label, page }) => (
                   <button
                     key={page}
-                    onClick={() => { onNavigate(page); setMobileMenuOpen(false); }}
+                    onClick={() => handleNavigate(page)}
                     className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-white/10 rounded-xl transition-colors group"
                   >
                     <Icon className="w-4 h-4 text-amber-400/70 group-hover:text-amber-200 flex-shrink-0" />
@@ -184,10 +217,12 @@ export default function Navbar({ onBookClick, onOpenAuth, onNavigate, currentPag
 
 type SearchBoxProps = {
   onBookClick: (book: Book) => void;
+  onAfterSelect?: () => void;
   isMobile?: boolean;
+  autoFocus?: boolean;
 };
 
-function SearchBox({ onBookClick, isMobile = false }: SearchBoxProps) {
+function SearchBox({ onBookClick, onAfterSelect, isMobile = false, autoFocus = false }: SearchBoxProps) {
   const { t, lang } = useLang();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Book[]>([]);
@@ -196,6 +231,14 @@ function SearchBox({ onBookClick, isMobile = false }: SearchBoxProps) {
   const [focused, setFocused] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-focus when activated on mobile
+  useEffect(() => {
+    if (autoFocus) {
+      const t = setTimeout(() => inputRef.current?.focus(), 80);
+      return () => clearTimeout(t);
+    }
+  }, [autoFocus]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -208,7 +251,7 @@ function SearchBox({ onBookClick, isMobile = false }: SearchBoxProps) {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // Close dropdown on Escape
+  // Escape to close
   useEffect(() => {
     function handler(e: KeyboardEvent) {
       if (e.key === 'Escape') {
@@ -246,6 +289,7 @@ function SearchBox({ onBookClick, isMobile = false }: SearchBoxProps) {
 
   function handleSelect(book: Book) {
     onBookClick(book);
+    onAfterSelect?.();
     setQuery('');
     setResults([]);
     setOpen(false);
@@ -298,7 +342,7 @@ function SearchBox({ onBookClick, isMobile = false }: SearchBoxProps) {
       {showDropdown && (
         <div
           className={`absolute left-0 right-0 mt-2 z-[60] bg-amber-950 border border-amber-800/40 rounded-2xl shadow-2xl shadow-black/60 overflow-hidden flex flex-col ${
-            isMobile ? 'max-h-64' : 'max-h-[440px]'
+            isMobile ? 'max-h-[60vh]' : 'max-h-[440px]'
           }`}
           dir={lang === 'ar' ? 'rtl' : 'ltr'}
         >
@@ -307,7 +351,10 @@ function SearchBox({ onBookClick, isMobile = false }: SearchBoxProps) {
               <Loader2 className="w-5 h-5 text-amber-400 animate-spin" />
             </div>
           ) : results.length === 0 ? (
-            <div className="py-7 text-center text-amber-300/50 text-sm" style={{ fontFamily: lang === 'ar' ? 'serif' : 'inherit' }}>
+            <div
+              className="py-7 text-center text-amber-300/50 text-sm"
+              style={{ fontFamily: lang === 'ar' ? 'serif' : 'inherit' }}
+            >
               {lang === 'ar' ? `لا نتائج لـ "${query}"` : `No results for "${query}"`}
             </div>
           ) : (
@@ -323,7 +370,8 @@ function SearchBox({ onBookClick, isMobile = false }: SearchBoxProps) {
                 ))}
               </div>
               {results.length === 8 && (
-                <div className="px-4 py-2.5 border-t border-amber-800/30 text-center text-xs text-amber-400/50"
+                <div
+                  className="px-4 py-2.5 border-t border-amber-800/30 text-center text-xs text-amber-400/50"
                   style={{ fontFamily: lang === 'ar' ? 'serif' : 'inherit' }}
                 >
                   {lang === 'ar' ? 'اكتب أكثر لتضييق النتائج' : 'Type more to narrow results'}
