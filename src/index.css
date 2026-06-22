@@ -139,7 +139,33 @@
   }
 }
 
-/* ── react-pageflip: hide the library's internal canvas overlay elements ── */
+/* ─────────────────────────────────────────────────────────────────
+   react-pageflip — force every layer of the flipbook to beige.
+   The library injects: .stf__parent > .stf__block > .stf__item > <our div>
+   We target every level so none of the dark stage background bleeds
+   through during flip animations or while pages are off-screen.
+───────────────────────────────────────────────────────────────── */
+.stf__parent,
+.stf__block {
+  background-color: #F5F5DC !important;
+  background-image: none !important;
+}
+
+.stf__parent .stf__item {
+  background-color: #F5F5DC !important;
+  background-image: none !important;
+  opacity: 1 !important;
+}
+
+.stf__parent .stf__item > div,
+.custom-paper-page {
+  background-color: #F5F5DC !important;
+  background-image: none !important;
+  color: #000000 !important;
+  opacity: 1 !important;
+}
+
+/* Hide the library's internal canvas (created even with drawShadow=false) */
 .stf__parent canvas {
   display: none !important;
 }

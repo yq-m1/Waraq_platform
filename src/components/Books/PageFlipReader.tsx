@@ -21,11 +21,13 @@ const BookPage = React.forwardRef<
 >(({ pageNumber, totalPages, text, isRTL, fontSize }, ref) => (
   <div
     ref={ref}
+    className="custom-paper-page"
     style={{
       width: '100%',
       height: '100%',
-      backgroundColor: PAGE_BG,
-      color: PAGE_TEXT,
+      backgroundColor: '#F5F5DC',
+      backgroundImage: 'none',
+      color: '#000000',
       position: 'relative',
       overflow: 'hidden',
       boxSizing: 'border-box',
