@@ -240,13 +240,7 @@ export default function TopRatedCarousel({ books, onBookClick }: Props) {
           {doubled.map((book, i) => (
             <div
               key={`${book.id}-${i}`}
-              // flex-shrink-0 ensures cards never shrink below their set width.
-              // Responsive widths: aim for ~4 visible on mobile, ~5 on desktop.
-              // w-24=96px  → 375px÷108px ≈ 3.5 visible
-              // sm:w-36    → 640px÷156px ≈ 4.1 visible
-              // md:w-44    → 768px÷192px ≈ 4.0 visible
-              // lg:w-52    → 1024px÷220px ≈ 4.7 visible  ✓
-              className="flex-shrink-0 w-24 sm:w-36 md:w-44 lg:w-52"
+              style={{ flexShrink: 0, width: '250px' }}
             >
               <RankedCard
                 book={book}
