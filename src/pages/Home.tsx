@@ -167,9 +167,19 @@ export default function Home({ searchQuery, onBookClick, onOpenAuth, onNavigate 
             <ArrowDown className="w-5 h-5 text-amber-400" />
           </div>
         </div>
-
-        <div className="absolute bottom-0 inset-x-0 h-12 bg-gradient-to-t from-stone-50 to-transparent" />
       </section>
+
+      {/* Amber separator — bridges hero and Top Rated section on a continuous dark surface */}
+      <div style={{ background: 'linear-gradient(135deg, #1c0a00 0%, #292524 100%)', lineHeight: 0 }}>
+        <div
+          style={{
+            height: 1,
+            width: '70%',
+            margin: '0 auto',
+            background: 'linear-gradient(to right, transparent, rgba(251,191,36,0.85) 30%, rgba(251,191,36,0.85) 70%, transparent)',
+          }}
+        />
+      </div>
 
       {/* Books Content */}
       <div id="books">
