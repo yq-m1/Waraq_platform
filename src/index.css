@@ -139,59 +139,7 @@
   }
 }
 
-/* ── react-pageflip: base page overrides ── */
-.stf__parent .stf__item > div {
-  color: #000000 !important;
-  opacity: 1 !important;
-  filter: none !important;
-  background-color: #F5F5DC !important; /* solid fallback */
-}
-
-/* Left page: light at outer (left) edge, shadowed toward spine (right) */
-.stf__parent .stf__item[class~="--left"] > div {
-  background: linear-gradient(
-    to right,
-    #FAFAF0 0%,
-    #F5F5DC 30%,
-    #EAE4C6 100%
-  ) !important;
-  box-shadow:
-    inset -6px 0 18px rgba(0,0,0,0.10),
-    inset -1px 0 4px rgba(0,0,0,0.06) !important;
-}
-
-/* Right page: light at outer (right) edge, shadowed toward spine (left) */
-.stf__parent .stf__item[class~="--right"] > div {
-  background: linear-gradient(
-    to left,
-    #FAFAF0 0%,
-    #F5F5DC 30%,
-    #EAE4C6 100%
-  ) !important;
-  box-shadow:
-    inset 6px 0 18px rgba(0,0,0,0.10),
-    inset 1px 0 4px rgba(0,0,0,0.06) !important;
-}
-
-/* Hide library canvas overlays — drawShadow=false but library still creates canvas elements */
+/* ── react-pageflip: hide the library's internal canvas overlay elements ── */
 .stf__parent canvas {
   display: none !important;
-}
-
-/* Paper grain texture via pseudo-element */
-.page-leaf {
-  position: relative;
-}
-
-.page-leaf::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 5;
-  opacity: 0.055;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='250' height='250'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.68' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='250' height='250' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
-  background-repeat: repeat;
-  background-size: 250px 250px;
-  mix-blend-mode: multiply;
 }
