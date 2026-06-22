@@ -19,7 +19,7 @@ const Page = React.forwardRef<
   <div
     ref={ref}
     style={{
-      background: '#FDF6E3',
+      background: '#F5F5DC',
       width: '100%',
       height: '100%',
       overflow: 'hidden',
@@ -85,7 +85,7 @@ const Page = React.forwardRef<
           fontFamily: isRTL ? "'Noto Naskh Arabic', serif" : 'Georgia, serif',
           fontSize: fontSize,
           lineHeight: 2.05,
-          color: '#2C2C2C',
+          color: '#000000',
           whiteSpace: 'pre-wrap',
           wordBreak: 'break-word',
           textAlign: 'justify',
@@ -228,12 +228,13 @@ export default function PageFlipReader({ pages, title, onClose }: Props) {
           <ChevronLeft className="w-5 h-5" />
         </button>
 
-        {/* Book */}
+        {/* Book — box-shadow gives elevation without affecting page colors */}
         <div
           style={{
             position: 'relative',
-            // Outer glow to simulate table/desk reflection
-            filter: 'drop-shadow(0 24px 48px rgba(0,0,0,0.8)) drop-shadow(0 4px 12px rgba(0,0,0,0.6))',
+            width: pageW * 2,
+            height: pageH,
+            boxShadow: '0 20px 60px rgba(0,0,0,0.7), 0 6px 20px rgba(0,0,0,0.5)',
           }}
         >
           {/* Spine highlight overlay — absolutely centered, sits on top of the two pages */}
@@ -262,12 +263,12 @@ export default function PageFlipReader({ pages, title, onClose }: Props) {
             maxWidth={500}
             minHeight={220}
             maxHeight={750}
-            drawShadow={true}
+            drawShadow={false}
             flippingTime={750}
             usePortrait={false}
             startZIndex={10}
             autoSize={false}
-            maxShadowOpacity={0.12}
+            maxShadowOpacity={0.1}
             showCover={false}
             mobileScrollSupport={false}
             useMouseEvents={true}
