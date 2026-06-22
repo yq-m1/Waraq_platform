@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BookOpen, ChevronDown, Loader2, Heart } from 'lucide-react';
+import { BookOpen, Sparkles, ArrowDown, ChevronDown, Loader2, Heart } from 'lucide-react';
 import { supabase, type Book } from '../lib/supabase';
 import { useLang } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
