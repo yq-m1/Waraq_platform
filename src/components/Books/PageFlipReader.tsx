@@ -18,6 +18,7 @@ const Page = React.forwardRef<
 >(({ pageNumber, totalPages, text, isRTL, fontSize }, ref) => (
   <div
     ref={ref}
+    className="page-leaf"
     style={{
       backgroundColor: '#F5F5DC',
       color: '#000000',
@@ -231,14 +232,32 @@ export default function PageFlipReader({ pages, title, onClose }: Props) {
           <ChevronLeft className="w-5 h-5" />
         </button>
 
-        {/* Book wrapper — outline border only, no shadow or gradient over pages */}
+        {/* Book wrapper — outer shadow elevates the book off the dark surface */}
         <div
           style={{
             position: 'relative',
             width: pageW * 2,
             height: pageH,
+            boxShadow:
+              '0 32px 64px rgba(0,0,0,0.75), 0 8px 24px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.4)',
           }}
         >
+          {/* Spine shadow — narrow gradient centered on the gutter between pages */}
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              bottom: 0,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: 24,
+              zIndex: 30,
+              pointerEvents: 'none',
+              background:
+                'linear-gradient(to right, rgba(0,0,0,0.22) 0%, rgba(0,0,0,0.06) 40%, rgba(0,0,0,0.06) 60%, rgba(0,0,0,0.22) 100%)',
+            }}
+          />
+
           {/* @ts-ignore — react-pageflip has loose prop typings */}
           <HTMLFlipBook
             ref={bookRef}
