@@ -110,7 +110,7 @@ export default function Home({ searchQuery, onBookClick, onOpenAuth, onNavigate 
   return (
     <div className="min-h-screen bg-stone-50">
       {/* Hero */}
-      <section className="relative min-h-[85vh] flex items-center justify-center overflow-hidden bg-gradient-to-br from-amber-950 via-stone-900 to-amber-900">
+      <section className="relative flex items-center justify-center overflow-hidden bg-gradient-to-br from-amber-950 via-stone-900 to-amber-900 py-24 sm:py-32">
         <div className="absolute inset-0 opacity-10"
           style={{
             backgroundImage: `url("data:image/svg+xml,%3Csvg width='42' height='42' viewBox='0 0 42 42' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round' transform='translate(9 9)'%3E%3Cpath d='M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z'/%3E%3Cpath d='M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z'/%3E%3C/g%3E%3C/svg%3E")`,
@@ -163,12 +163,12 @@ export default function Home({ searchQuery, onBookClick, onOpenAuth, onNavigate 
             )}
           </div>
 
-          <div className="mt-16 flex justify-center animate-bounce opacity-40">
+          <div className="mt-8 flex justify-center animate-bounce opacity-40">
             <ArrowDown className="w-5 h-5 text-amber-400" />
           </div>
         </div>
 
-        <div className="absolute bottom-0 inset-x-0 h-24 bg-gradient-to-t from-stone-50 to-transparent" />
+        <div className="absolute bottom-0 inset-x-0 h-12 bg-gradient-to-t from-stone-50 to-transparent" />
       </section>
 
       {/* Books Content */}

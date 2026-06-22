@@ -167,7 +167,7 @@ export default function TopRatedCarousel({ books, onBookClick }: Props) {
   return (
     <section
       className="relative bg-gradient-to-br from-amber-950 via-stone-900 to-stone-950"
-      style={{ overflow: 'hidden', paddingTop: '3.5rem', paddingBottom: '5rem' }}
+      style={{ overflow: 'hidden', paddingTop: '2rem', paddingBottom: '5rem' }}
       dir={t.dir}
     >
       <style>{keyframes}</style>
