@@ -139,6 +139,14 @@
   }
 }
 
+/* ── react-pageflip: force light beige pages, override any library-injected styles ── */
+.stf__parent .stf__item > div {
+  background-color: #F5F5DC !important;
+  color: #000000 !important;
+  opacity: 1 !important;
+  filter: none !important;
+}
+
 /* Book page texture - aged paper look */
 .book-page-texture {
   position: relative;

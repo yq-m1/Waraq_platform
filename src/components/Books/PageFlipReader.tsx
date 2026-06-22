@@ -19,12 +19,15 @@ const Page = React.forwardRef<
   <div
     ref={ref}
     style={{
-      background: '#F5F5DC',
+      backgroundColor: '#F5F5DC',
+      color: '#000000',
+      opacity: 1,
       width: '100%',
       height: '100%',
       overflow: 'hidden',
       position: 'relative',
       boxSizing: 'border-box',
+      filter: 'none',
     }}
   >
     {/* Top rule */}
@@ -237,7 +240,7 @@ export default function PageFlipReader({ pages, title, onClose }: Props) {
             boxShadow: '0 20px 60px rgba(0,0,0,0.7), 0 6px 20px rgba(0,0,0,0.5)',
           }}
         >
-          {/* Spine highlight overlay — absolutely centered, sits on top of the two pages */}
+          {/* Spine shadow — thin CSS line only, no fill over page content */}
           <div
             style={{
               position: 'absolute',
@@ -245,11 +248,10 @@ export default function PageFlipReader({ pages, title, onClose }: Props) {
               bottom: 0,
               left: '50%',
               transform: 'translateX(-50%)',
-              width: 10,
+              width: 4,
               zIndex: 30,
               pointerEvents: 'none',
-              background:
-                'linear-gradient(to right, rgba(50,20,5,0.45) 0%, rgba(80,40,10,0.12) 45%, rgba(80,40,10,0.12) 55%, rgba(50,20,5,0.45) 100%)',
+              background: 'linear-gradient(to right, rgba(0,0,0,0.18) 0%, transparent 50%, rgba(0,0,0,0.18) 100%)',
             }}
           />
 
