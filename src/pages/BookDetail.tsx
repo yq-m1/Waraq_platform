@@ -52,11 +52,19 @@ export default function BookDetail({ bookId, onBack, onOpenAuth }: BookDetailPro
   // Track recently viewed
   useEffect(() => {
     if (!user || !bookId) return;
-    supabase.from('recently_viewed').upsert(
-      { user_id: user.id, book_id: bookId, viewed_at: new Date().toISOString() },
-      { onConflict: 'user_id,book_id' }
-    );
-  }, [bookId, user?.id]);
+
+    async function trackRecentlyViewed() {
+      const { error } = await supabase.from('recently_viewed').upsert(
+        { user_id: user.id, book_id: bookId, viewed_at: new Date().toISOString() },
+        { onConflict: 'user_id,book_id' }
+      );
+      if (error) {
+        console.error('Failed to track recently viewed:', error);
+      }
+    }
+
+    trackRecentlyViewed();
+  }, [bookId, user]);
 
   // Check favorite status
   useEffect(() => {
