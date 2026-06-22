@@ -19,7 +19,7 @@ const Page = React.forwardRef<
   <div
     ref={ref}
     style={{
-      background: '#fdfcf0',
+      background: '#FDF6E3',
       width: '100%',
       height: '100%',
       overflow: 'hidden',
@@ -85,7 +85,7 @@ const Page = React.forwardRef<
           fontFamily: isRTL ? "'Noto Naskh Arabic', serif" : 'Georgia, serif',
           fontSize: fontSize,
           lineHeight: 2.05,
-          color: '#000000',
+          color: '#2C2C2C',
           whiteSpace: 'pre-wrap',
           wordBreak: 'break-word',
           textAlign: 'justify',
@@ -267,7 +267,7 @@ export default function PageFlipReader({ pages, title, onClose }: Props) {
             usePortrait={false}
             startZIndex={10}
             autoSize={false}
-            maxShadowOpacity={0.6}
+            maxShadowOpacity={0.12}
             showCover={false}
             mobileScrollSupport={false}
             useMouseEvents={true}
