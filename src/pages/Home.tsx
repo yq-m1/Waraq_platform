@@ -198,6 +198,11 @@ export default function Home({ searchQuery, onBookClick, onOpenAuth, onNavigate 
           </section>
         ) : (
           <>
+            {/* Top 10 Rated Books — first section below hero */}
+            {!loading && topRated.length > 0 && (
+              <TopRatedCarousel books={topRated} onBookClick={onBookClick} />
+            )}
+
             {/* Free Books Carousel */}
             {freeBooks.length > 0 && (
               <FreeBookCarousel
@@ -206,11 +211,6 @@ export default function Home({ searchQuery, onBookClick, onOpenAuth, onNavigate 
                 onBookClick={onBookClick}
                 onViewAll={() => onNavigate?.('free-books')}
               />
-            )}
-
-            {/* Top 10 Rated Books */}
-            {!loading && topRated.length > 0 && (
-              <TopRatedCarousel books={topRated} onBookClick={onBookClick} />
             )}
 
             {/* All Books — with filter tabs + load more */}
