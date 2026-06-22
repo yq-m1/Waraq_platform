@@ -46,7 +46,71 @@
   }
 }
 
-/* Page flip animations */
+/* Page flip animations for PageFlipReader */
+@keyframes flip-in-left {
+  0% {
+    opacity: 0;
+    transform: rotateY(80deg);
+    transform-origin: left center;
+  }
+  100% {
+    opacity: 1;
+    transform: rotateY(0deg);
+  }
+}
+
+@keyframes flip-in-right {
+  0% {
+    opacity: 0;
+    transform: rotateY(-80deg);
+    transform-origin: right center;
+  }
+  100% {
+    opacity: 1;
+    transform: rotateY(0deg);
+  }
+}
+
+@keyframes page-turn-next {
+  0% {
+    opacity: 1;
+    transform: rotateY(0deg);
+    transform-origin: left center;
+  }
+  100% {
+    opacity: 0;
+    transform: rotateY(-80deg);
+  }
+}
+
+@keyframes page-turn-prev {
+  0% {
+    opacity: 1;
+    transform: rotateY(0deg);
+    transform-origin: right center;
+  }
+  100% {
+    opacity: 0;
+    transform: rotateY(80deg);
+  }
+}
+
+.animate-flip-in-left {
+  animation: flip-in-left 400ms ease-out forwards;
+}
+
+.animate-flip-in-right {
+  animation: flip-in-right 400ms ease-out forwards;
+}
+
+.animate-page-turn-next {
+  animation: page-turn-next 400ms ease-out forwards;
+}
+
+.animate-page-turn-prev {
+  animation: page-turn-prev 400ms ease-out forwards;
+}
+
 @keyframes pageFlipForward {
   0% {
     transform: rotateY(0deg);

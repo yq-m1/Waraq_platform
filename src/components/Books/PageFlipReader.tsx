@@ -1,114 +1,239 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { useLang } from '../../contexts/LanguageContext';
 
-export default function PageFlipReader({ book, onClose }: any) {
+type Props = {
+  pages: string[];
+  title: string;
+  coverUrl?: string | null;
+  onClose: () => void;
+};
+
+export default function PageFlipReader({ pages, title, coverUrl, onClose }: Props) {
   const { lang } = useLang();
   const isRTL = lang === 'ar';
-  
-  const [currentPage, setCurrentPage] = useState(0);
-  const [isAnimating, setIsAnimating] = useState(false);
 
-  // 1. جلب العنوان الصحيح ديناميكياً حسب لغة الواجهة من السوبربيس
-  const bookTitle = isRTL 
-    ? (book?.title_ar || book?.book?.title_ar || book?.title || 'كتاب رقمي')
-    : (book?.title_en || book?.book?.title_en || book?.title || 'Digital Book');
+  // State
+  const [leftPage, setLeftPage] = useState(0);
+  const [isFlipping, setIsFlipping] = useState(false);
+  const [flipDirection, setFlipDirection] = useState<'next' | 'prev' | null>(null);
 
-  // 2. فحص وجلب نص محتوى الكتاب الفعلي من الحقول الثنائية بقاعدة البيانات
-  const rawContent = book?.content_ar || book?.book?.content_ar || 
-                     book?.book_content_ar || book?.book?.book_content_ar ||
-                     book?.pages || book?.book?.pages || 
-                     book?.content || book?.book?.content || '';
+  // Calculate totals
+  const hasCover = !!coverUrl;
+  const contentPages = pages.length;
+  const totalSheets = hasCover ? Math.ceil((contentPages + 1) / 2) + 1 : Math.ceil(contentPages / 2);
+  const currentSheet = hasCover ? Math.ceil((leftPage + 2) / 2) : Math.ceil((leftPage + 1) / 2);
+  const totalPageNumbers = contentPages + (hasCover ? 1 : 0);
+  const currentPageDisplay = hasCover ? leftPage + 1 : leftPage;
+  const rightPage = leftPage + 1;
 
-  // 3. تحويل النص القادم من الداتا بيس إلى مصفوفة صفحات مرنة (تقسيم بناءً على السطور الفارغة أو علامات الترقيم)
-  const bookPages = Array.isArray(rawContent)
-    ? (rawContent.length > 0 ? rawContent : [(isRTL ? 'لا يوجد محتوى متوفر لهذا الكتاب حالياً.' : 'No content available.')])
-    : typeof rawContent === 'string' && rawContent.trim() !== ''
-      ? rawContent.split('\n\n').filter(p => p.trim() !== '') // تقسيم النص لصفحات بناءً على المسافات والفقرات ليعطي تأثير التقليب
-      : [(isRTL ? 'جاري تحميل محتوى الكتاب من قاعدة البيانات أو النص غير متوفر...' : 'Loading book content from database...')];
+  // Navigation
+  const canGoNext = rightPage < contentPages;
+  const canGoPrev = leftPage > 0;
 
-  const totalPages = bookPages.length;
+  const goNext = useCallback(() => {
+    if (!canGoNext || isFlipping) return;
+    setFlipDirection('next');
+    setIsFlipping(true);
+  }, [canGoNext, isFlipping]);
 
-  const handleNext = () => {
-    if (currentPage < totalPages - 1 && !isAnimating) {
-      setIsAnimating(true);
-      setTimeout(() => {
-        setCurrentPage(currentPage + 1);
-        setIsAnimating(false);
-      }, 200);
-    }
-  };
+  const goPrev = useCallback(() => {
+    if (!canGoPrev || isFlipping) return;
+    setFlipDirection('prev');
+    setIsFlipping(true);
+  }, [canGoPrev, isFlipping]);
 
-  const handlePrev = () => {
-    if (currentPage > 0 && !isAnimating) {
-      setIsAnimating(true);
-      setTimeout(() => {
-        setCurrentPage(currentPage - 1);
-        setIsAnimating(false);
-      }, 200);
-    }
+  // Handle flip completion
+  useEffect(() => {
+    if (!isFlipping) return;
+    const timer = setTimeout(() => {
+      if (flipDirection === 'next') {
+        setLeftPage(p => Math.min(p + 2, contentPages - 1));
+      } else if (flipDirection === 'prev') {
+        setLeftPage(p => Math.max(p - 2, 0));
+      }
+      setIsFlipping(false);
+      setFlipDirection(null);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [isFlipping, flipDirection, contentPages]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight') isRTL ? goPrev() : goNext();
+      if (e.key === 'ArrowLeft') isRTL ? goNext() : goPrev();
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [goNext, goPrev, onClose, isRTL]);
+
+  // Render page content
+  const renderPageContent = (pageIndex: number) => {
+    if (pageIndex < 0 || pageIndex >= contentPages) return null;
+    const text = pages[pageIndex];
+    if (!text) return null;
+    return (
+      <p className="leading-[2.2] text-base md:text-lg text-stone-800 whitespace-pre-wrap break-words font-serif">
+        {text}
+      </p>
+    );
   };
 
   return (
-    <div className="fixed inset-0 bg-stone-900 bg-opacity-95 z-50 flex flex-col justify-between p-4 md:p-6" dir={isRTL ? 'rtl' : 'ltr'}>
-      
-      {/* البار العلوي الديناميكي الأصلي */}
-      <div className="flex items-center justify-between border-b border-stone-800 pb-4 w-full max-w-3xl mx-auto text-stone-200">
-        <h3 className="text-base md:text-lg font-bold truncate max-w-xs sm:max-w-md text-right w-full" style={{ fontFamily: isRTL ? 'serif' : 'inherit' }}>
-          {bookTitle}
-        </h3>
-        <button onClick={onClose} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 transition-colors text-sm font-medium text-stone-300 shrink-0 mx-2">
+    <div className="fixed inset-0 z-50 flex flex-col" dir={isRTL ? 'rtl' : 'ltr'}>
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-gradient-to-br from-stone-900 via-stone-800 to-amber-950" />
+
+      {/* Header */}
+      <header className="relative z-10 flex items-center justify-between px-4 md:px-8 py-4 border-b border-stone-700/50 bg-stone-900/80 backdrop-blur-sm">
+        <h2 className="text-amber-100 font-bold text-sm md:text-base truncate max-w-[60%]" style={{ fontFamily: isRTL ? 'serif' : 'Georgia, serif' }}>
+          {title}
+        </h2>
+        <button
+          onClick={onClose}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-amber-200 transition-colors text-sm"
+        >
           <X className="w-4 h-4" />
           {isRTL ? 'إغلاق' : 'Close'}
         </button>
-      </div>
+      </header>
 
-      {/* منطقة القراءة والتنقل بالأسهم */}
-      <div className="flex-1 flex items-center justify-center my-4 relative w-full max-w-3xl mx-auto">
-        
-        {/* سهم التحكم الأيسر */}
-        <button 
-          onClick={isRTL ? handleNext : handlePrev} 
-          disabled={isRTL ? currentPage === totalPages - 1 : currentPage === 0} 
-          className="absolute left-2 md:-left-14 z-30 w-12 h-12 rounded-full bg-amber-500 hover:bg-amber-600 text-stone-900 flex items-center justify-center disabled:opacity-20 disabled:bg-stone-800 disabled:text-stone-500 disabled:cursor-not-allowed transition-all duration-200 shadow-lg"
+      {/* Book spread */}
+      <main className="relative flex-1 flex items-center justify-center px-4 py-6 md:px-12">
+        {/* Book container with perspective */}
+        <div className="relative w-full max-w-4xl aspect-[1.4/1]">
+          {/* Book spine shadow */}
+          <div className="absolute left-1/2 top-0 bottom-0 w-4 -translate-x-1/2 bg-gradient-to-r from-stone-900/80 via-stone-800/60 to-stone-900/80 z-20 rounded-sm" />
+
+          {/* Left page */}
+          <div
+            className={`absolute top-0 left-0 w-1/2 h-full bg-amber-50 rounded-l-xl shadow-2xl overflow-hidden border border-stone-200 ${
+              isFlipping && flipDirection === 'prev'
+                ? 'animate-flip-in-left'
+                : ''
+            }`}
+            style={{
+              transformStyle: 'preserve-3d',
+              perspective: '2000px',
+              boxShadow: 'inset -8px 0 24px rgba(0,0,0,0.06)',
+            }}
+          >
+            <div className="h-full flex flex-col p-4 md:p-8 overflow-y-auto">
+              {/* Page number top */}
+              <div className="text-xs text-stone-400 mb-2 text-center">
+                {isRTL ? 'الصفحة' : 'Page'} {leftPage + 1}
+              </div>
+
+              {/* Content */}
+              <div className="flex-1 text-right" dir="rtl">
+                {renderPageContent(leftPage) || (
+                  <div className="h-full flex items-center justify-center text-stone-300">
+                    {isRTL ? 'صفحة فارغة' : 'Blank page'}
+                  </div>
+                )}
+              </div>
+
+              {/* Decorative bottom */}
+              <div className="border-t border-stone-200 mt-4 pt-2">
+                <div className="flex justify-center">
+                  <div className="w-12 h-0.5 bg-amber-200 rounded-full" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right page */}
+          <div
+            className={`absolute top-0 right-0 w-1/2 h-full bg-amber-50 rounded-r-xl shadow-2xl overflow-hidden border border-stone-200 ${
+              isFlipping && flipDirection === 'next'
+                ? 'animate-flip-in-right'
+                : ''
+            }`}
+            style={{
+              transformStyle: 'preserve-3d',
+              perspective: '2000px',
+              boxShadow: 'inset 8px 0 24px rgba(0,0,0,0.06)',
+            }}
+          >
+            <div className="h-full flex flex-col p-4 md:p-8 overflow-y-auto">
+              {/* Page number top */}
+              <div className="text-xs text-stone-400 mb-2 text-center">
+                {isRTL ? 'الصفحة' : 'Page'} {rightPage + 1}
+              </div>
+
+              {/* Content */}
+              <div className="flex-1 text-right" dir="rtl">
+                {renderPageContent(rightPage) || (
+                  <div className="h-full flex items-center justify-center text-stone-300">
+                    {isRTL ? 'نهاية الكتاب' : 'End of book'}
+                  </div>
+                )}
+              </div>
+
+              {/* Decorative bottom */}
+              <div className="border-t border-stone-200 mt-4 pt-2">
+                <div className="flex justify-center">
+                  <div className="w-12 h-0.5 bg-amber-200 rounded-full" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Page turn overlay animation */}
+          {isFlipping && (
+            <div
+              className={`absolute top-0 ${flipDirection === 'next' ? 'right-0' : 'left-0'} w-1/2 h-full bg-amber-100 z-30 rounded-${flipDirection === 'next' ? 'r' : 'l'}-xl shadow-2xl animate-page-turn-${flipDirection}`}
+              style={{
+                transformStyle: 'preserve-3d',
+                transformOrigin: flipDirection === 'next' ? 'left center' : 'right center',
+              }}
+            />
+          )}
+        </div>
+
+        {/* Navigation arrows */}
+        <button
+          onClick={isRTL ? goNext : goPrev}
+          disabled={isRTL ? !canGoNext : !canGoPrev}
+          className="absolute left-2 md:left-6 w-12 h-12 rounded-full bg-amber-600 hover:bg-amber-500 text-white flex items-center justify-center disabled:opacity-30 disabled:bg-stone-700 disabled:text-stone-500 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:scale-105"
         >
           <ChevronLeft className="w-6 h-6" />
         </button>
 
-        {/* كارت عرض صفحات الكتاب الحقيقي */}
-        <div className="w-full h-[65vh] bg-amber-50 bg-opacity-95 text-stone-900 p-6 md:p-10 rounded-xl shadow-2xl overflow-y-auto flex flex-col justify-between border border-stone-200">
-          <div className={isAnimating ? 'opacity-0 transition-opacity duration-200' : 'opacity-100 transition-opacity duration-200'}>
-            <p className="leading-relaxed text-right font-serif text-base md:text-lg text-stone-900 whitespace-pre-line">
-              {bookPages[currentPage]}
-            </p>
-          </div>
-          
-          <div className="text-xs text-stone-400 text-center mt-6 border-t border-stone-200 pt-3">
-            {isRTL ? 'الصفحة' : 'Page'} : {currentPage + 1}
-          </div>
-        </div>
-
-        {/* سهم التحكم الأيمن */}
-        <button 
-          onClick={isRTL ? handlePrev : handleNext} 
-          disabled={isRTL ? currentPage === 0 : currentPage === totalPages - 1} 
-          className="absolute right-2 md:-right-14 z-30 w-12 h-12 rounded-full bg-amber-500 hover:bg-amber-600 text-stone-900 flex items-center justify-center disabled:opacity-20 disabled:bg-stone-800 disabled:text-stone-500 disabled:cursor-not-allowed transition-all duration-200 shadow-lg"
+        <button
+          onClick={isRTL ? goPrev : goNext}
+          disabled={isRTL ? !canGoPrev : !canGoNext}
+          className="absolute right-2 md:right-6 w-12 h-12 rounded-full bg-amber-600 hover:bg-amber-500 text-white flex items-center justify-center disabled:opacity-30 disabled:bg-stone-700 disabled:text-stone-500 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:scale-105"
         >
           <ChevronRight className="w-6 h-6" />
         </button>
+      </main>
 
-      </div>
-
-      {/* البار السفلي وعداد الصفحات الديناميكي المعكوس ليتناسب مع الاتجاه */}
-      <div className="w-full max-w-3xl mx-auto flex items-center justify-between text-stone-400 text-xs md:text-sm border-t border-stone-800 pt-4" dir="ltr">
-        <div className="font-mono bg-stone-800 px-4 py-1 rounded-full text-stone-200 text-xs shadow-inner">
-          {currentPage + 1} / {totalPages}
+      {/* Footer */}
+      <footer className="relative z-10 flex items-center justify-between px-4 md:px-8 py-3 border-t border-stone-700/50 bg-stone-900/80 backdrop-blur-sm">
+        <div className="text-stone-500 text-xs">
+          {isRTL
+            ? `عرض الصفحات ${leftPage + 1}-${Math.min(rightPage + 1, contentPages)} من ${contentPages}`
+            : `Pages ${leftPage + 1}-${Math.min(rightPage + 1, contentPages)} of ${contentPages}`}
         </div>
-        <div className="text-right text-stone-400 text-xs md:text-sm font-sans">
+
+        {/* Page slider */}
+        <input
+          type="range"
+          min={0}
+          max={Math.max(0, contentPages - 1)}
+          value={leftPage}
+          onChange={(e) => setLeftPage(Number(e.target.value))}
+          className="w-32 md:w-48 h-1.5 bg-stone-700 rounded-full appearance-none cursor-pointer accent-amber-500"
+          dir="ltr"
+        />
+
+        <div className="text-stone-400 text-xs font-medium">
           {isRTL ? 'منصة ورق الرقمية' : 'Waraq Digital Platform'}
         </div>
-      </div>
-
+      </footer>
     </div>
   );
 }
