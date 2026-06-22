@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
+import HTMLFlipBook from 'react-pageflip';
 import { ChevronLeft, ChevronRight, X, BookOpen } from 'lucide-react';
 import { useLang } from '../../contexts/LanguageContext';
 
@@ -9,78 +10,175 @@ type Props = {
   onClose: () => void;
 };
 
-type AnimState = 'idle' | 'exit-left' | 'exit-right' | 'enter-left' | 'enter-right';
+// Individual page component — must be a forwardRef for react-pageflip
+import React from 'react';
+
+const BookPage = React.forwardRef<
+  HTMLDivElement,
+  { pageNumber: number; totalPages: number; children: React.ReactNode; isRTL: boolean }
+>(({ pageNumber, totalPages, children, isRTL }, ref) => (
+  <div
+    ref={ref}
+    className="book-page-texture"
+    style={{
+      background: 'linear-gradient(160deg, #F8F3E8 0%, #EDE4D3 55%, #E4D8C0 100%)',
+      width: '100%',
+      height: '100%',
+      overflow: 'hidden',
+      position: 'relative',
+      userSelect: 'none',
+    }}
+  >
+    {/* Spine shadow on right edge (left-page) or left edge (right-page) */}
+    <div
+      style={{
+        position: 'absolute',
+        top: 0,
+        bottom: 0,
+        width: 20,
+        right: 0,
+        background: 'linear-gradient(to left, rgba(100,60,20,0.14), transparent)',
+        pointerEvents: 'none',
+        zIndex: 2,
+      }}
+    />
+    {/* Content */}
+    <div
+      style={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        padding: '32px 36px 24px',
+        boxSizing: 'border-box',
+        overflow: 'hidden',
+      }}
+    >
+      {/* Top rule */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexShrink: 0 }}>
+        <div style={{ flex: 1, height: 1, background: 'rgba(180,130,60,0.3)' }} />
+        <span style={{ fontSize: 10, color: 'rgba(130,80,20,0.5)', fontVariantNumeric: 'tabular-nums', letterSpacing: 2 }}>
+          {pageNumber}
+        </span>
+        <div style={{ flex: 1, height: 1, background: 'rgba(180,130,60,0.3)' }} />
+      </div>
+
+      {/* Text */}
+      <div
+        style={{
+          flex: 1,
+          overflow: 'hidden',
+          direction: isRTL ? 'rtl' : 'ltr',
+          textAlign: isRTL ? 'right' : 'left',
+        }}
+      >
+        {children}
+      </div>
+
+      {/* Bottom ornament */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 12, flexShrink: 0 }}>
+        <div style={{ width: 24, height: 1, background: 'rgba(180,130,60,0.3)' }} />
+        <div style={{ width: 4, height: 4, borderRadius: '50%', background: 'rgba(180,130,60,0.35)' }} />
+        <div style={{ width: 24, height: 1, background: 'rgba(180,130,60,0.3)' }} />
+      </div>
+      <div style={{ textAlign: 'center', fontSize: 10, color: 'rgba(130,80,20,0.35)', marginTop: 4 }}>
+        {pageNumber} / {totalPages}
+      </div>
+    </div>
+  </div>
+));
+BookPage.displayName = 'BookPage';
 
 export default function PageFlipReader({ pages, title, onClose }: Props) {
   const { lang } = useLang();
   const isRTL = lang === 'ar';
+  const bookRef = useRef<any>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const [currentPage, setCurrentPage] = useState(0);
-  const [animState, setAnimState] = useState<AnimState>('idle');
+  const [isPortrait, setIsPortrait] = useState(false);
+  const [bookDims, setBookDims] = useState({ width: 420, height: 580 });
 
   const totalPages = pages.length;
+  // In landscape (two-page spread), a "spread" = 2 pages; in portrait = 1 page
+  const totalSpreads = isPortrait ? totalPages : Math.ceil(totalPages / 2);
+  const currentSpread = isPortrait ? currentPage : Math.floor(currentPage / 2);
+
   const canGoPrev = currentPage > 0;
   const canGoNext = currentPage < totalPages - 1;
 
-  const navigate = useCallback((direction: 'prev' | 'next') => {
-    if (animState !== 'idle') return;
-    if (direction === 'next' && !canGoNext) return;
-    if (direction === 'prev' && !canGoPrev) return;
-
-    // Exit animation: page slides out in the given direction
-    const exitAnim = direction === 'next' ? 'exit-left' : 'exit-right';
-    const enterAnim = direction === 'next' ? 'enter-right' : 'enter-left';
-
-    setAnimState(exitAnim);
-
-    setTimeout(() => {
-      setCurrentPage(p => direction === 'next' ? p + 1 : p - 1);
-      setAnimState(enterAnim);
-      setTimeout(() => setAnimState('idle'), 300);
-    }, 280);
-  }, [animState, canGoNext, canGoPrev]);
-
-  const goNext = useCallback(() => navigate('next'), [navigate]);
-  const goPrev = useCallback(() => navigate('prev'), [navigate]);
-
+  // Compute page dimensions responsively from container
   useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
+    function measure() {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const availW = rect.width - 80; // subtract nav arrow space
+      const availH = rect.height - 16;
+      const portrait = availW < 680;
+      setIsPortrait(portrait);
+
+      if (portrait) {
+        const w = Math.min(availW, 420);
+        setBookDims({ width: w, height: Math.round(w * 1.45) });
+      } else {
+        const pageW = Math.min(Math.floor(availW / 2), 460);
+        const pageH = Math.min(Math.round(pageW * 1.42), availH);
+        setBookDims({ width: pageW, height: pageH });
+      }
+    }
+    measure();
+    const ro = new ResizeObserver(measure);
+    if (containerRef.current) ro.observe(containerRef.current);
+    return () => ro.disconnect();
+  }, []);
+
+  const goNext = useCallback(() => {
+    if (!canGoNext) return;
+    bookRef.current?.pageFlip()?.flipNext('bottom');
+  }, [canGoNext]);
+
+  const goPrev = useCallback(() => {
+    if (!canGoPrev) return;
+    bookRef.current?.pageFlip()?.flipPrev('bottom');
+  }, [canGoPrev]);
+
+  const handleFlip = useCallback((e: any) => {
+    setCurrentPage(e.data);
+  }, []);
+
+  const handleChangeOrientation = useCallback((e: any) => {
+    setIsPortrait(e.data === 'portrait');
+  }, []);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
       if (e.key === 'ArrowRight') isRTL ? goPrev() : goNext();
-      if (e.key === 'ArrowLeft')  isRTL ? goNext() : goPrev();
+      if (e.key === 'ArrowLeft') isRTL ? goNext() : goPrev();
       if (e.key === 'Escape') onClose();
     };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, [goNext, goPrev, onClose, isRTL]);
 
-  // CSS transform based on animation state
-  const pageStyle = (): React.CSSProperties => {
-    const base: React.CSSProperties = {
-      transition: 'transform 280ms cubic-bezier(0.4, 0, 0.2, 1), opacity 280ms ease',
-    };
-    switch (animState) {
-      case 'exit-left':
-        return { ...base, transform: 'translateX(-6%) rotateY(8deg)', opacity: 0 };
-      case 'exit-right':
-        return { ...base, transform: 'translateX(6%) rotateY(-8deg)', opacity: 0 };
-      case 'enter-left':
-        return { ...base, transform: 'translateX(6%) rotateY(-8deg)', opacity: 0, transition: 'none' };
-      case 'enter-right':
-        return { ...base, transform: 'translateX(-6%) rotateY(8deg)', opacity: 0, transition: 'none' };
-      default:
-        return { ...base, transform: 'translateX(0) rotateY(0deg)', opacity: 1 };
-    }
+  const textStyle: React.CSSProperties = {
+    fontFamily: isRTL ? "'Noto Naskh Arabic', serif" : 'Georgia, serif',
+    fontSize: bookDims.width < 340 ? 13 : 15,
+    lineHeight: 2.1,
+    color: '#2C2416',
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-word',
   };
-
-  const text = pages[currentPage] ?? '';
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col" dir={isRTL ? 'rtl' : 'ltr'}>
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-gradient-to-br from-stone-900 via-stone-800 to-amber-950" />
+      <div
+        className="absolute inset-0"
+        style={{ background: 'radial-gradient(ellipse at 50% 40%, #3d2b1a 0%, #1a1008 100%)' }}
+      />
 
       {/* Header */}
-      <header className="relative z-10 flex items-center justify-between px-4 md:px-8 py-4 border-b border-stone-700/50 bg-stone-900/80 backdrop-blur-sm shrink-0">
+      <header className="relative z-10 shrink-0 flex items-center justify-between px-4 md:px-8 py-3.5 border-b border-stone-700/50 bg-black/40 backdrop-blur-sm">
         <div className="flex items-center gap-3 min-w-0">
           <BookOpen className="w-5 h-5 text-amber-400 shrink-0" />
           <h2
@@ -92,149 +190,159 @@ export default function PageFlipReader({ pages, title, onClose }: Props) {
         </div>
         <button
           onClick={onClose}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-amber-200 transition-colors text-sm shrink-0 ms-4"
+          className="shrink-0 ms-4 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-stone-800/80 hover:bg-stone-700 text-stone-300 hover:text-amber-200 transition-colors text-sm"
         >
           <X className="w-4 h-4" />
           {isRTL ? 'إغلاق' : 'Close'}
         </button>
       </header>
 
-      {/* Page area */}
-      <main className="relative flex-1 flex items-center justify-center px-10 md:px-20 py-6 overflow-hidden">
-        {/* Left / Prev arrow */}
+      {/* Book stage */}
+      <main ref={containerRef} className="relative flex-1 flex items-center justify-center px-10 md:px-16 py-4 overflow-hidden">
+        {/* Ambient glow under book */}
+        <div
+          className="absolute pointer-events-none"
+          style={{
+            width: bookDims.width * (isPortrait ? 1 : 2) + 40,
+            height: bookDims.height + 40,
+            background: 'radial-gradient(ellipse, rgba(200,150,60,0.12) 0%, transparent 70%)',
+            borderRadius: '50%',
+            filter: 'blur(24px)',
+          }}
+        />
+
+        {/* Left nav arrow */}
         <button
           onClick={isRTL ? goNext : goPrev}
           disabled={isRTL ? !canGoNext : !canGoPrev}
-          aria-label={isRTL ? 'الصفحة التالية' : 'Previous page'}
-          className="absolute left-2 md:left-6 z-20 w-11 h-11 rounded-full bg-amber-700/80 hover:bg-amber-600 text-white flex items-center justify-center disabled:opacity-20 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:scale-105 disabled:hover:scale-100"
+          aria-label={isRTL ? 'التالي' : 'Previous'}
+          className="absolute left-2 md:left-4 z-20 w-11 h-11 rounded-full flex items-center justify-center bg-amber-900/60 hover:bg-amber-700 text-amber-200 disabled:opacity-20 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:scale-105 disabled:hover:scale-100 backdrop-blur-sm"
         >
           <ChevronLeft className="w-5 h-5" />
         </button>
 
-        {/* Book page card */}
+        {/* The FlipBook */}
         <div
-          className="relative w-full max-w-2xl book-page-texture rounded-2xl overflow-hidden"
           style={{
-            background: 'linear-gradient(160deg, #F8F3E8 0%, #EDE4D3 45%, #E4D8C0 100%)',
-            boxShadow: `
-              0 20px 60px rgba(0,0,0,0.5),
-              0 4px 16px rgba(0,0,0,0.3),
-              inset 0 1px 0 rgba(255,255,255,0.6),
-              inset 4px 0 12px rgba(139,90,43,0.08)
-            `,
-            perspective: '1200px',
-            minHeight: '60vh',
-            maxHeight: '72vh',
+            boxShadow: '0 30px 80px rgba(0,0,0,0.7), 0 8px 24px rgba(0,0,0,0.5)',
+            borderRadius: 4,
+            position: 'relative',
           }}
         >
-          {/* Left edge shadow (spine side) */}
-          <div
-            className="absolute top-0 bottom-0 w-8 pointer-events-none z-10"
-            style={{
-              left: 0,
-              background: 'linear-gradient(to right, rgba(100,60,20,0.12), transparent)',
-            }}
-          />
-          {/* Right edge shadow */}
-          <div
-            className="absolute top-0 bottom-0 w-6 pointer-events-none z-10"
-            style={{
-              right: 0,
-              background: 'linear-gradient(to left, rgba(100,60,20,0.08), transparent)',
-            }}
-          />
-
-          {/* Animated page content */}
-          <div
-            className="h-full flex flex-col px-8 md:px-12 py-8 overflow-y-auto"
-            style={{ ...pageStyle(), transformStyle: 'preserve-3d' }}
+          {/* @ts-ignore – react-pageflip has loose types */}
+          <HTMLFlipBook
+            ref={bookRef}
+            width={bookDims.width}
+            height={bookDims.height}
+            size="fixed"
+            minWidth={200}
+            maxWidth={520}
+            minHeight={280}
+            maxHeight={780}
+            drawShadow
+            flippingTime={700}
+            usePortrait={true}
+            startZIndex={10}
+            autoSize={false}
+            maxShadowOpacity={0.5}
+            showCover={false}
+            mobileScrollSupport={false}
+            useMouseEvents
+            showPageCorners
+            swipeDistance={30}
+            clickEventForward={false}
+            startPage={0}
+            className=""
+            style={{}}
+            onFlip={handleFlip}
+            onChangeOrientation={handleChangeOrientation}
           >
-            {/* Page number at top */}
-            <div className="flex items-center justify-between mb-6 shrink-0">
-              <div className="w-12 h-px bg-amber-400/40" />
-              <span className="text-xs font-medium tracking-widest text-amber-700/50 uppercase px-3">
-                {isRTL ? `الصفحة ${currentPage + 1}` : `Page ${currentPage + 1}`}
-              </span>
-              <div className="w-12 h-px bg-amber-400/40" />
-            </div>
-
-            {/* Text content */}
-            <div
-              className="flex-1"
-              dir={isRTL ? 'rtl' : 'ltr'}
-              style={{ textAlign: isRTL ? 'right' : 'left' }}
-            >
-              <p
-                className="leading-[2.1] text-base md:text-[1.05rem] whitespace-pre-wrap break-words"
-                style={{
-                  color: '#2C2416',
-                  fontFamily: isRTL ? "'Noto Naskh Arabic', serif" : 'Georgia, serif',
-                }}
+            {pages.map((text, i) => (
+              <BookPage
+                key={i}
+                pageNumber={i + 1}
+                totalPages={totalPages}
+                isRTL={isRTL}
               >
-                {text}
-              </p>
-            </div>
-
-            {/* Bottom ornament */}
-            <div className="flex items-center justify-center gap-2 mt-8 shrink-0">
-              <div className="w-8 h-px bg-amber-400/30" />
-              <div className="w-1.5 h-1.5 rounded-full bg-amber-400/40" />
-              <div className="w-8 h-px bg-amber-400/30" />
-            </div>
-          </div>
+                <p style={textStyle}>{text}</p>
+              </BookPage>
+            ))}
+          </HTMLFlipBook>
         </div>
 
-        {/* Right / Next arrow */}
+        {/* Right nav arrow */}
         <button
           onClick={isRTL ? goPrev : goNext}
           disabled={isRTL ? !canGoPrev : !canGoNext}
-          aria-label={isRTL ? 'الصفحة السابقة' : 'Next page'}
-          className="absolute right-2 md:right-6 z-20 w-11 h-11 rounded-full bg-amber-700/80 hover:bg-amber-600 text-white flex items-center justify-center disabled:opacity-20 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:scale-105 disabled:hover:scale-100"
+          aria-label={isRTL ? 'السابق' : 'Next'}
+          className="absolute right-2 md:right-4 z-20 w-11 h-11 rounded-full flex items-center justify-center bg-amber-900/60 hover:bg-amber-700 text-amber-200 disabled:opacity-20 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:scale-105 disabled:hover:scale-100 backdrop-blur-sm"
         >
           <ChevronRight className="w-5 h-5" />
         </button>
       </main>
 
-      {/* Footer nav bar */}
-      <footer className="relative z-10 shrink-0 flex items-center justify-between gap-4 px-4 md:px-8 py-3 border-t border-stone-700/50 bg-stone-900/80 backdrop-blur-sm">
+      {/* Footer */}
+      <footer className="relative z-10 shrink-0 flex items-center justify-between gap-4 px-4 md:px-8 py-3 border-t border-stone-700/50 bg-black/40 backdrop-blur-sm">
         {/* Prev button */}
         <button
           onClick={isRTL ? goNext : goPrev}
           disabled={isRTL ? !canGoNext : !canGoPrev}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-stone-800 hover:bg-amber-800/60 text-stone-300 hover:text-amber-100 text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200"
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-stone-800/80 hover:bg-amber-900/60 text-stone-300 hover:text-amber-100 text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200"
         >
           <ChevronLeft className="w-4 h-4" />
           {isRTL ? 'التالي' : 'Previous'}
         </button>
 
-        {/* Page indicator + dot trail */}
+        {/* Dots + counter */}
         <div className="flex flex-col items-center gap-1.5 flex-1 min-w-0">
-          <span className="text-amber-300/80 text-xs font-medium tracking-wide">
+          <span className="text-amber-300/70 text-xs font-medium tracking-wide tabular-nums">
             {isRTL
               ? `${currentPage + 1} من ${totalPages}`
-              : `${currentPage + 1} of ${totalPages}`}
+              : `Page ${currentPage + 1} of ${totalPages}`}
           </span>
-          <div className="flex items-center gap-1" dir="ltr">
-            {Array.from({ length: totalPages }).map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setCurrentPage(i)}
-                className={`rounded-full transition-all duration-200 ${
-                  i === currentPage
-                    ? 'w-4 h-2 bg-amber-400'
-                    : 'w-2 h-2 bg-stone-600 hover:bg-stone-500'
-                }`}
-                aria-label={`Go to page ${i + 1}`}
-              />
-            ))}
-          </div>
+          {totalPages <= 12 && (
+            <div className="flex items-center gap-1" dir="ltr">
+              {pages.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => {
+                    const delta = i - currentPage;
+                    if (delta > 0) for (let n = 0; n < delta; n++) bookRef.current?.pageFlip()?.flipNext('bottom');
+                    else for (let n = 0; n < -delta; n++) bookRef.current?.pageFlip()?.flipPrev('bottom');
+                  }}
+                  className={`rounded-full transition-all duration-200 ${
+                    i === currentPage
+                      ? 'w-5 h-2 bg-amber-400'
+                      : 'w-2 h-2 bg-stone-600 hover:bg-stone-500'
+                  }`}
+                  aria-label={`Go to page ${i + 1}`}
+                />
+              ))}
+            </div>
+          )}
+          {totalPages > 12 && (
+            <input
+              type="range"
+              min={0}
+              max={totalPages - 1}
+              value={currentPage}
+              dir="ltr"
+              onChange={(e) => {
+                const target = Number(e.target.value);
+                const delta = target - currentPage;
+                if (delta > 0) for (let n = 0; n < delta; n++) bookRef.current?.pageFlip()?.flipNext('bottom');
+                else for (let n = 0; n < -delta; n++) bookRef.current?.pageFlip()?.flipPrev('bottom');
+              }}
+              className="w-32 md:w-48 accent-amber-500 cursor-pointer"
+            />
+          )}
         </div>
 
         {/* Next button */}
         <button
           onClick={isRTL ? goPrev : goNext}
           disabled={isRTL ? !canGoPrev : !canGoNext}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-stone-800 hover:bg-amber-800/60 text-stone-300 hover:text-amber-100 text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200"
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-stone-800/80 hover:bg-amber-900/60 text-stone-300 hover:text-amber-100 text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200"
         >
           {isRTL ? 'السابق' : 'Next'}
           <ChevronRight className="w-4 h-4" />
