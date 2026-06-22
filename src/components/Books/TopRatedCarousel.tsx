@@ -1,20 +1,29 @@
-import { useRef, useEffect, useState, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Trophy } from 'lucide-react';
+import { useRef, useEffect, useState } from 'react';
+import {
+  motion,
+  useMotionValue,
+  useAnimationFrame,
+} from 'framer-motion';
+import { Trophy, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Book } from '../../lib/supabase';
 import { useLang } from '../../contexts/LanguageContext';
 import StarRating from './StarRating';
+
+// Pixels per second — increase for a faster belt
+const SPEED = 48;
 
 type Props = {
   books: Book[];
   onBookClick: (book: Book) => void;
 };
 
-const MEDAL: Array<{ gradient: string; text: string }> = [
+const MEDAL = [
   { gradient: 'from-yellow-400 to-amber-300', text: 'text-amber-900' }, // gold
   { gradient: 'from-slate-300 to-slate-200',  text: 'text-slate-700' }, // silver
   { gradient: 'from-orange-600 to-amber-500', text: 'text-white'     }, // bronze
 ];
 
+// ─── Card ────────────────────────────────────────────────────────────────────
 function RankedCard({
   book,
   rank,
@@ -33,37 +42,39 @@ function RankedCard({
   const medal = rank <= 3 ? MEDAL[rank - 1] : null;
 
   return (
-    <button
+    <motion.button
       onClick={() => onClick(book)}
-      className="group relative bg-white/10 hover:bg-white/[0.14] border border-white/10 hover:border-amber-400/30 rounded-2xl overflow-hidden text-start w-full transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-black/40"
+      // Lift the card toward the viewer on hover (works inside preserve-3d track)
+      whileHover={{ scale: 1.07, z: 50 }}
+      transition={{ type: 'spring', stiffness: 340, damping: 28 }}
+      className="relative w-full rounded-2xl overflow-hidden bg-white/10 border border-white/10
+                 text-start cursor-pointer"
+      style={{ transformStyle: 'preserve-3d' }}
     >
-      {/* Cover — aspect-[2/3] reserves height before image loads (no layout shift) */}
+      {/* Cover — aspect-[2/3] reserves space before image loads (no CLS) */}
       <div className="relative aspect-[2/3] overflow-hidden bg-stone-800">
         {book.cover_url && !imgFailed ? (
           <img
             src={book.cover_url}
             alt={title}
             loading={eager ? 'eager' : 'lazy'}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            className="w-full h-full object-cover"
             onError={() => setImgFailed(true)}
           />
         ) : (
           <CoverFallback title={title} />
         )}
-
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
 
         {/* Rank badge */}
         <div
-          className={`
-            absolute top-2.5 start-2.5
-            w-7 h-7 rounded-full flex items-center justify-center
-            text-xs font-black shadow-lg ring-1
-            ${medal
+          className={[
+            'absolute top-2 start-2 w-7 h-7 rounded-full flex items-center justify-center',
+            'text-xs font-black shadow-lg ring-1',
+            medal
               ? `bg-gradient-to-br ${medal.gradient} ${medal.text} ring-white/40`
-              : 'bg-stone-900/80 text-amber-300 ring-amber-400/30'
-            }
-          `}
+              : 'bg-stone-900/80 text-amber-300 ring-amber-400/30',
+          ].join(' ')}
         >
           {rank}
         </div>
@@ -72,7 +83,7 @@ function RankedCard({
       {/* Info */}
       <div className="p-3">
         <h3
-          className="font-bold text-white/90 text-xs leading-snug line-clamp-2 mb-2 group-hover:text-amber-200 transition-colors"
+          className="font-bold text-white/90 text-xs leading-snug line-clamp-2 mb-2"
           style={{ fontFamily: lang === 'ar' ? 'serif' : 'inherit' }}
         >
           {title}
@@ -84,13 +95,13 @@ function RankedCard({
           </span>
         </div>
       </div>
-    </button>
+    </motion.button>
   );
 }
 
 function CoverFallback({ title }: { title: string }) {
-  const colors = ['#78350f', '#1e3a5f', '#14532d', '#4a1942', '#7f1d1d'] as const;
-  const bg = colors[(title.charCodeAt(0) || 0) % colors.length];
+  const palette = ['#78350f', '#1e3a5f', '#14532d', '#4a1942', '#7f1d1d'] as const;
+  const bg = palette[(title.charCodeAt(0) || 0) % palette.length];
   return (
     <div className="w-full h-full flex flex-col items-center justify-center gap-2 select-none" style={{ background: bg }}>
       <span className="text-4xl font-bold text-white/20">{title.charAt(0)}</span>
@@ -101,79 +112,51 @@ function CoverFallback({ title }: { title: string }) {
   );
 }
 
+// ─── Main carousel ───────────────────────────────────────────────────────────
 export default function TopRatedCarousel({ books, onBookClick }: Props) {
   const { t, lang } = useLang();
   const isRTL = lang === 'ar';
 
-  const scrollRef  = useRef<HTMLDivElement>(null);
-  const autoDir    = useRef<1 | -1>(1);   // 1 = forward, -1 = backward
-  const paused     = useRef(false);
+  // Triple the list so there is always content on both sides of the reset seam
+  const tripled = [...books, ...books, ...books];
 
-  const [canLeft,  setCanLeft]  = useState(false);
-  const [canRight, setCanRight] = useState(true);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const x = useMotionValue(0);
 
-  // ── Arrow-button state ──────────────────────────────────────────────────
-  const updateButtons = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const abs = Math.abs(el.scrollLeft);
-    const max = el.scrollWidth - el.clientWidth;
-    if (isRTL) {
-      setCanRight(abs > 5);
-      setCanLeft(abs < max - 5);
-    } else {
-      setCanLeft(abs > 5);
-      setCanRight(abs < max - 5);
-    }
-  }, [isRTL]);
+  // offsetLeft of the first card in the SECOND copy — this is the seamless reset point
+  const [loopWidth, setLoopWidth] = useState(0);
 
   useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    el.addEventListener('scroll', updateButtons, { passive: true });
-    const timer = setTimeout(updateButtons, 200);
-    return () => { el.removeEventListener('scroll', updateButtons); clearTimeout(timer); };
-  }, [books, updateButtons]);
+    const measure = () => {
+      const el = trackRef.current;
+      if (!el || el.children.length < books.length + 1) return;
+      const secondCopyStart = el.children[books.length] as HTMLElement;
+      setLoopWidth(secondCopyStart.offsetLeft);
+    };
+    const id = setTimeout(measure, 80);
+    window.addEventListener('resize', measure);
+    return () => { clearTimeout(id); window.removeEventListener('resize', measure); };
+  }, [books]);
 
-  // ── Manual scroll ───────────────────────────────────────────────────────
-  const scroll = (dir: 'left' | 'right') => {
-    const el = scrollRef.current;
-    if (!el) return;
-    el.scrollBy({ left: el.clientWidth * 0.75 * (dir === 'left' ? -1 : 1), behavior: 'smooth' });
+  // ── Infinite linear scroll ────────────────────────────────────────────────
+  // Moving rightward by SPEED px/s means x decreases (left shift), cards go right→left.
+  useAnimationFrame((_, delta) => {
+    if (loopWidth === 0) return;
+    let next = x.get() - (delta / 1000) * SPEED;
+    // Seamless: once we've scrolled past one full copy, jump back by exactly loopWidth
+    if (next <= -loopWidth) next += loopWidth;
+    x.set(next);
+  });
+
+  // Manual arrow: nudge by one card-width, animation continues from new position
+  const nudge = (forward: boolean) => {
+    if (loopWidth === 0) return;
+    const step = loopWidth / books.length;
+    let next = x.get() + (forward ? -step : step);
+    if (next <= -loopWidth) next += loopWidth;
+    if (next > 0)           next -= loopWidth;
+    x.set(next);
   };
-
-  // ── Auto-scroll: one card per tick, bounce at boundaries ───────────────
-  // Forward direction for RTL means scrolling LEFT (negative scrollLeft).
-  // `autoDir=1` → forward, `autoDir=-1` → backward (bounce back).
-  useEffect(() => {
-    if (books.length === 0) return;
-
-    const id = setInterval(() => {
-      if (paused.current) return;
-      const el = scrollRef.current;
-      if (!el) return;
-
-      const abs = Math.abs(el.scrollLeft);
-      const max = el.scrollWidth - el.clientWidth;
-      if (max <= 0) return;
-
-      // Switch direction at boundaries
-      if (abs >= max - 10) autoDir.current = -1;
-      else if (abs <= 10)  autoDir.current =  1;
-
-      // Step = one card width + gap (gap-4 = 16px)
-      const card = el.firstElementChild as HTMLElement | null;
-      const step = card ? card.offsetWidth + 16 : el.clientWidth / 5;
-
-      el.scrollBy({
-        // RTL: forward = leftward (negative left); LTR: forward = rightward (positive left)
-        left: (isRTL ? -step : step) * autoDir.current,
-        behavior: 'smooth',
-      });
-    }, 3000);
-
-    return () => clearInterval(id);
-  }, [books, isRTL]);
 
   if (books.length === 0) return null;
 
@@ -182,19 +165,18 @@ export default function TopRatedCarousel({ books, onBookClick }: Props) {
       className="py-14 relative overflow-hidden bg-gradient-to-br from-amber-950 via-stone-900 to-stone-950"
       dir={t.dir}
     >
-      {/* Book-pattern texture */}
+      {/* Subtle book-pattern texture */}
       <div
-        className="absolute inset-0 opacity-[0.035]"
+        className="absolute inset-0 opacity-[0.035] pointer-events-none"
         style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg width='42' height='42' viewBox='0 0 42 42' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round' transform='translate(9 9)'%3E%3Cpath d='M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z'/%3E%3Cpath d='M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z'/%3E%3C/g%3E%3C/svg%3E")`,
         }}
       />
-      <div className="pointer-events-none absolute -top-10 left-1/3 w-96 h-64 bg-amber-500/10 rounded-full blur-3xl" />
+      <div className="pointer-events-none absolute -top-10 left-1/3 w-96 h-64 bg-amber-500/8 rounded-full blur-3xl" />
 
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-
-        {/* ── Header ── */}
-        <div className="flex items-center justify-between mb-8">
+      {/* ── Header (constrained to max-w) ── */}
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-8">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 bg-amber-400/20 border border-amber-400/30 rounded-xl flex items-center justify-center flex-shrink-0">
               <Trophy className="w-4 h-4 text-amber-400" />
@@ -210,50 +192,87 @@ export default function TopRatedCarousel({ books, onBookClick }: Props) {
             </span>
           </div>
 
-          {/* Navigation — always dir=ltr so ‹ is left and › is right */}
+          {/* Nav buttons — dir=ltr so ‹ always means "go back" */}
           <div className="flex items-center gap-2" dir="ltr">
             <button
-              onClick={() => scroll('left')}
-              disabled={!canLeft}
-              aria-label="Scroll left"
-              className="w-9 h-9 rounded-full border-2 border-amber-400/35 text-amber-400 flex items-center justify-center hover:bg-amber-400/15 hover:border-amber-400/70 disabled:opacity-20 disabled:cursor-not-allowed transition-all duration-200"
+              onClick={() => nudge(false)}
+              aria-label="Previous"
+              className="w-9 h-9 rounded-full border-2 border-amber-400/35 text-amber-400 flex items-center justify-center hover:bg-amber-400/15 hover:border-amber-400/70 transition-all duration-200"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
             <button
-              onClick={() => scroll('right')}
-              disabled={!canRight}
-              aria-label="Scroll right"
-              className="w-9 h-9 rounded-full border-2 border-amber-400/35 text-amber-400 flex items-center justify-center hover:bg-amber-400/15 hover:border-amber-400/70 disabled:opacity-20 disabled:cursor-not-allowed transition-all duration-200"
+              onClick={() => nudge(true)}
+              aria-label="Next"
+              className="w-9 h-9 rounded-full border-2 border-amber-400/35 text-amber-400 flex items-center justify-center hover:bg-amber-400/15 hover:border-amber-400/70 transition-all duration-200"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
         </div>
+      </div>
 
-        {/* ── Carousel track ── */}
-        <div
-          ref={scrollRef}
-          className="flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-4"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-          // Pause auto-scroll while the user interacts with the carousel
-          onMouseEnter={() => { paused.current = true; }}
-          onMouseLeave={() => { paused.current = false; }}
-          onTouchStart={() => { paused.current = true; }}
-          onTouchEnd={()   => { paused.current = false; }}
+      {/* ── 3D ticker stage ── */}
+      {/*
+        perspective on the container projects 3D depth onto the track.
+        rotateX on the track tilts the belt away at the top — classic "3D conveyor" look.
+        transformOrigin below center means the pivot is below the cards, so they tilt
+        naturally (bottom stays close, top recedes into the distance).
+        preserve-3d is propagated to card children so whileHover z-lift works.
+      */}
+      <div
+        dir="ltr"
+        className="relative"
+        style={{
+          perspective: '1100px',
+          WebkitPerspective: '1100px',
+          perspectiveOrigin: '50% 50%',
+        }}
+      >
+        <motion.div
+          ref={trackRef}
+          className="flex gap-3 will-change-transform"
+          style={{
+            x,
+            rotateX: -7,
+            transformOrigin: 'center 170%',
+            transformStyle: 'preserve-3d',
+          }}
         >
-          {books.map((book, i) => (
+          {tripled.map((book, i) => (
             <div
-              key={book.id}
-              // 2 visible on mobile → 3 on sm → 4 on md → 5 on lg
-              className="w-[calc(50%-8px)] sm:w-[calc(33.333%-11px)] md:w-[calc(25%-12px)] lg:w-[calc(20%-13px)] flex-shrink-0 snap-start"
+              key={`${book.id}-${i}`}
+              // Widths tuned so 4 cards show on mobile, 5 on desktop
+              // w-20=80px  → 375px÷96px ≈ 3.9 ≈ 4 cards  ✓
+              // sm:w-36    → 640px÷152px ≈ 4.2 ≈ 4–5      ✓
+              // md:w-44    → 768px÷192px = 4.0             ✓
+              // lg:w-52    → 1024px÷224px ≈ 4.6 ≈ 5       ✓
+              className="flex-shrink-0 w-20 sm:w-36 md:w-44 lg:w-52"
             >
-              {/* First 5 cards load eagerly (visible in initial viewport) */}
-              <RankedCard book={book} rank={i + 1} eager={i < 5} onClick={onBookClick} />
+              <RankedCard
+                book={book}
+                rank={(i % books.length) + 1}
+                eager={i < 10}
+                onClick={onBookClick}
+              />
             </div>
           ))}
-        </div>
+        </motion.div>
 
+        {/* Left fade — matches section's left edge colour (amber-950) */}
+        <div
+          className="pointer-events-none absolute inset-y-0 left-0 w-16 sm:w-28"
+          style={{
+            background: 'linear-gradient(to right, #1c0a00 0%, transparent 100%)',
+          }}
+        />
+        {/* Right fade — matches section's right edge colour (stone-950) */}
+        <div
+          className="pointer-events-none absolute inset-y-0 right-0 w-16 sm:w-28"
+          style={{
+            background: 'linear-gradient(to left, #0c0a09 0%, transparent 100%)',
+          }}
+        />
       </div>
     </section>
   );
