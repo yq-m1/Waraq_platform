@@ -22,11 +22,12 @@ export default function ReviewSection({ bookId, onOpenAuth }: ReviewSectionProps
   const [userReview, setUserReview] = useState<Review | null>(null);
 
   async function fetchReviews() {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('reviews')
       .select('*, profiles(username)')
       .eq('book_id', bookId)
       .order('created_at', { ascending: false });
+    if (error) console.error('fetchReviews error:', error);
     if (data) {
       setReviews(data as Review[]);
       if (user) {
