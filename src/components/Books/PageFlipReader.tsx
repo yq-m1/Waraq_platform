@@ -231,30 +231,14 @@ export default function PageFlipReader({ pages, title, onClose }: Props) {
           <ChevronLeft className="w-5 h-5" />
         </button>
 
-        {/* Book — box-shadow gives elevation without affecting page colors */}
+        {/* Book wrapper — outline border only, no shadow or gradient over pages */}
         <div
           style={{
             position: 'relative',
             width: pageW * 2,
             height: pageH,
-            boxShadow: '0 20px 60px rgba(0,0,0,0.7), 0 6px 20px rgba(0,0,0,0.5)',
           }}
         >
-          {/* Spine shadow — thin CSS line only, no fill over page content */}
-          <div
-            style={{
-              position: 'absolute',
-              top: 0,
-              bottom: 0,
-              left: '50%',
-              transform: 'translateX(-50%)',
-              width: 4,
-              zIndex: 30,
-              pointerEvents: 'none',
-              background: 'linear-gradient(to right, rgba(0,0,0,0.18) 0%, transparent 50%, rgba(0,0,0,0.18) 100%)',
-            }}
-          />
-
           {/* @ts-ignore — react-pageflip has loose prop typings */}
           <HTMLFlipBook
             ref={bookRef}
