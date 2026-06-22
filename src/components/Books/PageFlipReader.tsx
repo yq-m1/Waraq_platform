@@ -75,7 +75,7 @@ export default function PageFlipReader({ pages, title, coverUrl, onClose }: Prop
     const text = pages[pageIndex];
     if (!text) return null;
     return (
-      <p className="leading-[2.2] text-base md:text-lg text-stone-800 whitespace-pre-wrap break-words font-serif">
+      <p className="leading-[2.2] text-base md:text-lg whitespace-pre-wrap break-words font-serif" style={{ color: '#333333' }}>
         {text}
       </p>
     );
@@ -109,7 +109,7 @@ export default function PageFlipReader({ pages, title, coverUrl, onClose }: Prop
 
           {/* Left page */}
           <div
-            className={`absolute top-0 left-0 w-1/2 h-full bg-amber-50 rounded-l-xl shadow-2xl overflow-hidden border border-stone-200 ${
+            className={`absolute top-0 left-0 w-1/2 h-full rounded-l-xl shadow-2xl overflow-hidden border border-amber-200/50 book-page-texture ${
               isFlipping && flipDirection === 'prev'
                 ? 'animate-flip-in-left'
                 : ''
@@ -117,28 +117,29 @@ export default function PageFlipReader({ pages, title, coverUrl, onClose }: Prop
             style={{
               transformStyle: 'preserve-3d',
               perspective: '2000px',
-              boxShadow: 'inset -8px 0 24px rgba(0,0,0,0.06)',
+              background: 'linear-gradient(135deg, #F5F0E6 0%, #EDE4D3 50%, #E8DCC8 100%)',
+              boxShadow: 'inset -12px 0 32px rgba(139, 90, 43, 0.12), inset -2px 0 8px rgba(139, 90, 43, 0.08), 0 4px 24px rgba(0,0,0,0.15)',
             }}
           >
             <div className="h-full flex flex-col p-4 md:p-8 overflow-y-auto">
               {/* Page number top */}
-              <div className="text-xs text-stone-400 mb-2 text-center">
+              <div className="text-xs text-amber-700/60 mb-2 text-center font-medium">
                 {isRTL ? 'الصفحة' : 'Page'} {leftPage + 1}
               </div>
 
               {/* Content */}
               <div className="flex-1 text-right" dir="rtl">
                 {renderPageContent(leftPage) || (
-                  <div className="h-full flex items-center justify-center text-stone-300">
+                  <div className="h-full flex items-center justify-center text-amber-800/40">
                     {isRTL ? 'صفحة فارغة' : 'Blank page'}
                   </div>
                 )}
               </div>
 
               {/* Decorative bottom */}
-              <div className="border-t border-stone-200 mt-4 pt-2">
+              <div className="border-t border-amber-300/40 mt-4 pt-2">
                 <div className="flex justify-center">
-                  <div className="w-12 h-0.5 bg-amber-200 rounded-full" />
+                  <div className="w-12 h-0.5 bg-amber-400/50 rounded-full" />
                 </div>
               </div>
             </div>
@@ -146,7 +147,7 @@ export default function PageFlipReader({ pages, title, coverUrl, onClose }: Prop
 
           {/* Right page */}
           <div
-            className={`absolute top-0 right-0 w-1/2 h-full bg-amber-50 rounded-r-xl shadow-2xl overflow-hidden border border-stone-200 ${
+            className={`absolute top-0 right-0 w-1/2 h-full rounded-r-xl shadow-2xl overflow-hidden border border-amber-200/50 book-page-texture ${
               isFlipping && flipDirection === 'next'
                 ? 'animate-flip-in-right'
                 : ''
@@ -154,28 +155,29 @@ export default function PageFlipReader({ pages, title, coverUrl, onClose }: Prop
             style={{
               transformStyle: 'preserve-3d',
               perspective: '2000px',
-              boxShadow: 'inset 8px 0 24px rgba(0,0,0,0.06)',
+              background: 'linear-gradient(225deg, #F5F0E6 0%, #EDE4D3 50%, #E8DCC8 100%)',
+              boxShadow: 'inset 12px 0 32px rgba(139, 90, 43, 0.12), inset 2px 0 8px rgba(139, 90, 43, 0.08), 0 4px 24px rgba(0,0,0,0.15)',
             }}
           >
             <div className="h-full flex flex-col p-4 md:p-8 overflow-y-auto">
               {/* Page number top */}
-              <div className="text-xs text-stone-400 mb-2 text-center">
+              <div className="text-xs text-amber-700/60 mb-2 text-center font-medium">
                 {isRTL ? 'الصفحة' : 'Page'} {rightPage + 1}
               </div>
 
               {/* Content */}
               <div className="flex-1 text-right" dir="rtl">
                 {renderPageContent(rightPage) || (
-                  <div className="h-full flex items-center justify-center text-stone-300">
+                  <div className="h-full flex items-center justify-center text-amber-800/40">
                     {isRTL ? 'نهاية الكتاب' : 'End of book'}
                   </div>
                 )}
               </div>
 
               {/* Decorative bottom */}
-              <div className="border-t border-stone-200 mt-4 pt-2">
+              <div className="border-t border-amber-300/40 mt-4 pt-2">
                 <div className="flex justify-center">
-                  <div className="w-12 h-0.5 bg-amber-200 rounded-full" />
+                  <div className="w-12 h-0.5 bg-amber-400/50 rounded-full" />
                 </div>
               </div>
             </div>
@@ -184,10 +186,13 @@ export default function PageFlipReader({ pages, title, coverUrl, onClose }: Prop
           {/* Page turn overlay animation */}
           {isFlipping && (
             <div
-              className={`absolute top-0 ${flipDirection === 'next' ? 'right-0' : 'left-0'} w-1/2 h-full bg-amber-100 z-30 rounded-${flipDirection === 'next' ? 'r' : 'l'}-xl shadow-2xl animate-page-turn-${flipDirection}`}
+              className={`absolute top-0 ${flipDirection === 'next' ? 'right-0' : 'left-0'} w-1/2 h-full z-30 book-page-texture animate-page-turn-${flipDirection}`}
               style={{
+                background: 'linear-gradient(135deg, #F5F0E6 0%, #EDE4D3 100%)',
                 transformStyle: 'preserve-3d',
                 transformOrigin: flipDirection === 'next' ? 'left center' : 'right center',
+                borderRadius: flipDirection === 'next' ? '0 0.75rem 0.75rem 0' : '0.75rem 0 0 0.75rem',
+                boxShadow: '0 4px 24px rgba(0,0,0,0.15)',
               }}
             />
           )}
