@@ -11,225 +11,131 @@ type Props = {
   onClose: () => void;
 };
 
-// Left-page variant: spine shadow on the right edge
-const LeftPage = React.forwardRef<
+// ─── Single page component (library assigns left/right automatically) ────────
+const Page = React.forwardRef<
   HTMLDivElement,
-  { pageNumber: number; totalPages: number; children: React.ReactNode; isRTL: boolean }
->(({ pageNumber, totalPages, children, isRTL }, ref) => (
+  { pageNumber: number; totalPages: number; text: string; isRTL: boolean; fontSize: number }
+>(({ pageNumber, totalPages, text, isRTL, fontSize }, ref) => (
   <div
     ref={ref}
     style={{
-      background: 'linear-gradient(to right, #FDF6E3 0%, #FAF0D7 100%)',
+      background: '#fdfcf0',
       width: '100%',
       height: '100%',
       overflow: 'hidden',
       position: 'relative',
       boxSizing: 'border-box',
-      userSelect: 'none',
     }}
   >
-    {/* Right-edge spine shadow */}
+    {/* Top rule */}
     <div
       style={{
         position: 'absolute',
-        top: 0,
-        right: 0,
-        width: 28,
-        height: '100%',
-        background: 'linear-gradient(to left, rgba(80,40,10,0.18) 0%, rgba(80,40,10,0.06) 50%, transparent 100%)',
-        pointerEvents: 'none',
-        zIndex: 3,
+        top: 22,
+        left: 28,
+        right: 28,
+        height: 1,
+        background: 'rgba(140,90,30,0.3)',
       }}
     />
-    <PageContent pageNumber={pageNumber} totalPages={totalPages} isRTL={isRTL} side="left">
-      {children}
-    </PageContent>
-  </div>
-));
-LeftPage.displayName = 'LeftPage';
-
-// Right-page variant: spine shadow on the left edge
-const RightPage = React.forwardRef<
-  HTMLDivElement,
-  { pageNumber: number; totalPages: number; children: React.ReactNode; isRTL: boolean }
->(({ pageNumber, totalPages, children, isRTL }, ref) => (
-  <div
-    ref={ref}
-    style={{
-      background: 'linear-gradient(to left, #FDF6E3 0%, #FAF0D7 100%)',
-      width: '100%',
-      height: '100%',
-      overflow: 'hidden',
-      position: 'relative',
-      boxSizing: 'border-box',
-      userSelect: 'none',
-    }}
-  >
-    {/* Left-edge spine shadow */}
+    {/* Bottom rule */}
     <div
       style={{
         position: 'absolute',
-        top: 0,
+        bottom: 32,
+        left: 28,
+        right: 28,
+        height: 1,
+        background: 'rgba(140,90,30,0.3)',
+      }}
+    />
+    {/* Page number */}
+    <div
+      style={{
+        position: 'absolute',
+        bottom: 14,
         left: 0,
-        width: 28,
-        height: '100%',
-        background: 'linear-gradient(to right, rgba(80,40,10,0.18) 0%, rgba(80,40,10,0.06) 50%, transparent 100%)',
-        pointerEvents: 'none',
-        zIndex: 3,
-      }}
-    />
-    <PageContent pageNumber={pageNumber} totalPages={totalPages} isRTL={isRTL} side="right">
-      {children}
-    </PageContent>
-  </div>
-));
-RightPage.displayName = 'RightPage';
-
-function PageContent({
-  pageNumber,
-  totalPages,
-  isRTL,
-  side,
-  children,
-}: {
-  pageNumber: number;
-  totalPages: number;
-  isRTL: boolean;
-  side: 'left' | 'right';
-  children: React.ReactNode;
-}) {
-  return (
-    <div
-      style={{
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        padding: '28px 32px 20px',
-        boxSizing: 'border-box',
-        overflow: 'hidden',
+        right: 0,
+        textAlign: 'center',
+        fontSize: 10,
+        color: 'rgba(100,60,20,0.55)',
+        letterSpacing: 2,
+        fontFamily: 'Georgia, serif',
+        userSelect: 'none',
       }}
     >
-      {/* Top rule with page number */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          marginBottom: 14,
-          flexShrink: 0,
-        }}
-      >
-        <div style={{ flex: 1, height: 1, background: 'rgba(160,110,50,0.35)' }} />
-        <span
-          style={{
-            fontSize: 10,
-            color: 'rgba(120,70,20,0.6)',
-            letterSpacing: 2,
-            fontVariantNumeric: 'tabular-nums',
-            fontFamily: 'Georgia, serif',
-          }}
-        >
-          {pageNumber}
-        </span>
-        <div style={{ flex: 1, height: 1, background: 'rgba(160,110,50,0.35)' }} />
-      </div>
+      {pageNumber} / {totalPages}
+    </div>
 
-      {/* Text */}
-      <div
+    {/* Main text area */}
+    <div
+      style={{
+        position: 'absolute',
+        top: 36,
+        bottom: 44,
+        left: 28,
+        right: 28,
+        overflow: 'hidden',
+        direction: isRTL ? 'rtl' : 'ltr',
+      }}
+    >
+      <p
         style={{
-          flex: 1,
-          overflow: 'hidden',
-          direction: isRTL ? 'rtl' : 'ltr',
+          margin: 0,
+          fontFamily: isRTL ? "'Noto Naskh Arabic', serif" : 'Georgia, serif',
+          fontSize: fontSize,
+          lineHeight: 2.05,
+          color: '#000000',
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
           textAlign: 'justify',
         }}
       >
-        {children}
-      </div>
-
-      {/* Bottom ornament */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: side === 'left' ? 'flex-end' : 'flex-start',
-          gap: 6,
-          marginTop: 10,
-          flexShrink: 0,
-        }}
-      >
-        <div style={{ width: 20, height: 1, background: 'rgba(160,110,50,0.3)' }} />
-        <div
-          style={{
-            width: 4,
-            height: 4,
-            borderRadius: '50%',
-            background: 'rgba(160,110,50,0.4)',
-          }}
-        />
-        <div style={{ width: 20, height: 1, background: 'rgba(160,110,50,0.3)' }} />
-        <span
-          style={{
-            fontSize: 9,
-            color: 'rgba(120,70,20,0.45)',
-            fontFamily: 'Georgia, serif',
-            marginLeft: 4,
-          }}
-        >
-          {pageNumber} / {totalPages}
-        </span>
-      </div>
+        {text}
+      </p>
     </div>
-  );
-}
+  </div>
+));
+Page.displayName = 'Page';
 
+// ─── Main reader ─────────────────────────────────────────────────────────────
 export default function PageFlipReader({ pages, title, onClose }: Props) {
   const { lang } = useLang();
   const isRTL = lang === 'ar';
   const bookRef = useRef<any>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
 
   const [currentPage, setCurrentPage] = useState(0);
-  const [isPortrait, setIsPortrait] = useState(false);
-  // pageW = width of ONE page; book renders two side-by-side in landscape
-  const [pageW, setPageW] = useState(380);
-  const [pageH, setPageH] = useState(540);
+  // pageW = width of ONE page. Library renders TWO pages side-by-side.
+  const [pageW, setPageW] = useState(400);
+  const [pageH, setPageH] = useState(560);
 
   const totalPages = pages.length;
   const canGoPrev = currentPage > 0;
   const canGoNext = currentPage < totalPages - 1;
 
-  // Responsive sizing: measure available space, fit book inside
+  // Measure available stage area → compute single-page width
   useEffect(() => {
     function measure() {
-      if (!containerRef.current) return;
-      const { width: aw, height: ah } = containerRef.current.getBoundingClientRect();
-      // Reserve ~80px for side arrow buttons, ~16px vertical padding
-      const usableW = aw - 80;
-      const usableH = ah - 16;
-      const portrait = usableW < 640;
-      setIsPortrait(portrait);
-
-      if (portrait) {
-        // Single page: fill width
-        const w = Math.min(usableW, 420);
-        const h = Math.min(Math.round(w * 1.45), usableH);
-        setPageW(w);
-        setPageH(h);
-      } else {
-        // Two pages side by side: each page = half available width
-        const maxPageW = Math.min(Math.floor(usableW / 2), 460);
-        const h = Math.min(Math.round(maxPageW * 1.42), usableH);
-        // Clamp width to maintain aspect ratio
-        const w = Math.min(maxPageW, Math.floor(h / 1.42));
-        setPageW(w);
-        setPageH(h);
-      }
+      if (!stageRef.current) return;
+      const { width: aw, height: ah } = stageRef.current.getBoundingClientRect();
+      // 100px: side arrow buttons (50px each side)
+      // 24px: vertical padding
+      const availW = aw - 100;
+      const availH = ah - 24;
+      // Each page = half of available width (two pages shown side by side)
+      const w = Math.max(180, Math.min(Math.floor(availW / 2), 480));
+      const h = Math.max(240, Math.min(Math.round(w * 1.45), availH));
+      setPageW(w);
+      setPageH(h);
     }
     measure();
     const ro = new ResizeObserver(measure);
-    if (containerRef.current) ro.observe(containerRef.current);
+    if (stageRef.current) ro.observe(stageRef.current);
     return () => ro.disconnect();
   }, []);
+
+  const fontSize = pageW < 280 ? 12 : pageW < 360 ? 13 : pageW < 440 ? 14.5 : 15.5;
 
   const goNext = useCallback(() => {
     if (!canGoNext) return;
@@ -245,10 +151,6 @@ export default function PageFlipReader({ pages, title, onClose }: Props) {
     setCurrentPage(e.data);
   }, []);
 
-  const handleChangeOrientation = useCallback((e: any) => {
-    setIsPortrait(e.data === 'portrait');
-  }, []);
-
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'ArrowRight') isRTL ? goPrev() : goNext();
@@ -259,29 +161,20 @@ export default function PageFlipReader({ pages, title, onClose }: Props) {
     return () => window.removeEventListener('keydown', onKey);
   }, [goNext, goPrev, onClose, isRTL]);
 
-  const textStyle: React.CSSProperties = {
-    fontFamily: isRTL ? "'Noto Naskh Arabic', serif" : 'Georgia, serif',
-    fontSize: pageW < 300 ? 13 : pageW < 380 ? 14 : 15.5,
-    lineHeight: 2.05,
-    color: '#1a1008',
-    whiteSpace: 'pre-wrap',
-    wordBreak: 'break-word',
-    textAlign: 'justify',
-  };
-
-  // Total visible book width
-  const bookTotalW = isPortrait ? pageW : pageW * 2;
+  // Total book render width = pageW * 2 (two pages)
+  const bookW = pageW * 2;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col" dir={isRTL ? 'rtl' : 'ltr'}>
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0"
-        style={{ background: 'radial-gradient(ellipse at 50% 38%, #3a2510 0%, #150d04 100%)' }}
-      />
-
+    <div
+      className="fixed inset-0 z-50 flex flex-col"
+      dir={isRTL ? 'rtl' : 'ltr'}
+      style={{ background: '#1c0f05' }}
+    >
       {/* Header */}
-      <header className="relative z-10 shrink-0 flex items-center justify-between px-4 md:px-8 py-3.5 border-b border-stone-700/50 bg-black/50 backdrop-blur-sm">
+      <header
+        className="relative z-10 shrink-0 flex items-center justify-between px-4 md:px-8 py-3"
+        style={{ background: 'rgba(0,0,0,0.55)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}
+      >
         <div className="flex items-center gap-3 min-w-0">
           <BookOpen className="w-5 h-5 text-amber-400 shrink-0" />
           <h2
@@ -293,114 +186,110 @@ export default function PageFlipReader({ pages, title, onClose }: Props) {
         </div>
         <button
           onClick={onClose}
-          className="shrink-0 ms-4 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-stone-800/80 hover:bg-stone-700 text-stone-300 hover:text-amber-200 transition-colors text-sm"
+          className="shrink-0 ms-4 flex items-center gap-2 px-3 py-1.5 rounded-lg text-stone-300 hover:text-white text-sm transition-colors"
+          style={{ background: 'rgba(255,255,255,0.08)' }}
         >
           <X className="w-4 h-4" />
           {isRTL ? 'إغلاق' : 'Close'}
         </button>
       </header>
 
-      {/* Book stage */}
+      {/* Stage */}
       <main
-        ref={containerRef}
-        className="relative flex-1 flex items-center justify-center px-10 md:px-14 py-4 overflow-hidden"
+        ref={stageRef}
+        className="relative flex-1 flex items-center justify-center overflow-hidden"
+        style={{ padding: '12px 50px' }}
       >
-        {/* Warm glow beneath the book */}
-        <div
-          className="absolute pointer-events-none"
-          style={{
-            width: bookTotalW + 60,
-            height: pageH + 60,
-            background: 'radial-gradient(ellipse, rgba(210,160,70,0.15) 0%, transparent 70%)',
-            borderRadius: '50%',
-            filter: 'blur(28px)',
-          }}
-        />
-
         {/* Left arrow */}
         <button
           onClick={isRTL ? goNext : goPrev}
           disabled={isRTL ? !canGoNext : !canGoPrev}
           aria-label={isRTL ? 'التالي' : 'Previous'}
-          className="absolute left-2 md:left-3 z-20 w-11 h-11 rounded-full flex items-center justify-center bg-amber-900/60 hover:bg-amber-700 text-amber-200 disabled:opacity-20 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:scale-105 disabled:hover:scale-100 backdrop-blur-sm"
+          style={{
+            position: 'absolute',
+            left: 8,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            zIndex: 20,
+            width: 42,
+            height: 42,
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'rgba(180,110,30,0.7)',
+            color: '#ffe8b0',
+            border: 'none',
+            cursor: 'pointer',
+            transition: 'background 0.2s',
+            opacity: (isRTL ? !canGoNext : !canGoPrev) ? 0.2 : 1,
+          }}
         >
           <ChevronLeft className="w-5 h-5" />
         </button>
 
-        {/* Book wrapper — outer shadow + spine line overlay */}
-        <div style={{ position: 'relative' }}>
-          {/* Hard outer shadow to give the book volume */}
+        {/* Book */}
+        <div
+          style={{
+            position: 'relative',
+            // Outer glow to simulate table/desk reflection
+            filter: 'drop-shadow(0 24px 48px rgba(0,0,0,0.8)) drop-shadow(0 4px 12px rgba(0,0,0,0.6))',
+          }}
+        >
+          {/* Spine highlight overlay — absolutely centered, sits on top of the two pages */}
           <div
             style={{
               position: 'absolute',
-              inset: 0,
-              boxShadow: '0 32px 90px rgba(0,0,0,0.75), 0 8px 28px rgba(0,0,0,0.55)',
-              borderRadius: 3,
+              top: 0,
+              bottom: 0,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: 10,
+              zIndex: 30,
               pointerEvents: 'none',
-              zIndex: 1,
+              background:
+                'linear-gradient(to right, rgba(50,20,5,0.45) 0%, rgba(80,40,10,0.12) 45%, rgba(80,40,10,0.12) 55%, rgba(50,20,5,0.45) 100%)',
             }}
           />
 
-          {/* Center spine highlight (only in landscape) */}
-          {!isPortrait && (
-            <div
-              style={{
-                position: 'absolute',
-                top: 0,
-                bottom: 0,
-                left: '50%',
-                transform: 'translateX(-50%)',
-                width: 6,
-                background:
-                  'linear-gradient(to right, rgba(60,30,5,0.55) 0%, rgba(120,70,20,0.18) 40%, rgba(120,70,20,0.18) 60%, rgba(60,30,5,0.55) 100%)',
-                zIndex: 20,
-                pointerEvents: 'none',
-              }}
-            />
-          )}
-
-          {/* @ts-ignore */}
+          {/* @ts-ignore — react-pageflip has loose prop typings */}
           <HTMLFlipBook
             ref={bookRef}
             width={pageW}
             height={pageH}
             size="fixed"
-            minWidth={180}
-            maxWidth={520}
-            minHeight={260}
-            maxHeight={780}
-            drawShadow
+            minWidth={160}
+            maxWidth={500}
+            minHeight={220}
+            maxHeight={750}
+            drawShadow={true}
             flippingTime={750}
-            usePortrait
+            usePortrait={false}
             startZIndex={10}
             autoSize={false}
-            maxShadowOpacity={0.55}
+            maxShadowOpacity={0.6}
             showCover={false}
             mobileScrollSupport={false}
-            useMouseEvents
-            showPageCorners
+            useMouseEvents={true}
+            showPageCorners={true}
             swipeDistance={30}
             clickEventForward={false}
+            disableFlipByClick={false}
             startPage={0}
             className=""
-            style={{}}
+            style={{ display: 'block' }}
             onFlip={handleFlip}
-            onChangeOrientation={handleChangeOrientation}
           >
-            {pages.map((text, i) => {
-              // Even index → left page, odd → right page
-              const PageComp = i % 2 === 0 ? LeftPage : RightPage;
-              return (
-                <PageComp
-                  key={i}
-                  pageNumber={i + 1}
-                  totalPages={totalPages}
-                  isRTL={isRTL}
-                >
-                  <p style={textStyle}>{text}</p>
-                </PageComp>
-              );
-            })}
+            {pages.map((text, i) => (
+              <Page
+                key={i}
+                pageNumber={i + 1}
+                totalPages={totalPages}
+                text={text}
+                isRTL={isRTL}
+                fontSize={fontSize}
+              />
+            ))}
           </HTMLFlipBook>
         </div>
 
@@ -409,32 +298,50 @@ export default function PageFlipReader({ pages, title, onClose }: Props) {
           onClick={isRTL ? goPrev : goNext}
           disabled={isRTL ? !canGoPrev : !canGoNext}
           aria-label={isRTL ? 'السابق' : 'Next'}
-          className="absolute right-2 md:right-3 z-20 w-11 h-11 rounded-full flex items-center justify-center bg-amber-900/60 hover:bg-amber-700 text-amber-200 disabled:opacity-20 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:scale-105 disabled:hover:scale-100 backdrop-blur-sm"
+          style={{
+            position: 'absolute',
+            right: 8,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            zIndex: 20,
+            width: 42,
+            height: 42,
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'rgba(180,110,30,0.7)',
+            color: '#ffe8b0',
+            border: 'none',
+            cursor: 'pointer',
+            transition: 'background 0.2s',
+            opacity: (isRTL ? !canGoPrev : !canGoNext) ? 0.2 : 1,
+          }}
         >
           <ChevronRight className="w-5 h-5" />
         </button>
       </main>
 
       {/* Footer */}
-      <footer className="relative z-10 shrink-0 flex items-center justify-between gap-4 px-4 md:px-8 py-3 border-t border-stone-700/50 bg-black/50 backdrop-blur-sm">
+      <footer
+        className="relative z-10 shrink-0 flex items-center justify-between gap-4 px-4 md:px-8 py-3"
+        style={{ background: 'rgba(0,0,0,0.55)', borderTop: '1px solid rgba(255,255,255,0.08)' }}
+      >
         <button
           onClick={isRTL ? goNext : goPrev}
           disabled={isRTL ? !canGoNext : !canGoPrev}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-stone-800/80 hover:bg-amber-900/60 text-stone-300 hover:text-amber-100 text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200"
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-stone-300 hover:text-amber-200 text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200"
+          style={{ background: 'rgba(255,255,255,0.07)' }}
         >
           <ChevronLeft className="w-4 h-4" />
           {isRTL ? 'التالي' : 'Previous'}
         </button>
 
-        {/* Page indicator */}
         <div className="flex flex-col items-center gap-1.5 flex-1 min-w-0">
           <span className="text-amber-300/80 text-xs font-medium tracking-wide tabular-nums">
-            {isRTL
-              ? `${currentPage + 1} من ${totalPages}`
-              : `Page ${currentPage + 1} of ${totalPages}`}
+            {isRTL ? `${currentPage + 1} من ${totalPages}` : `Page ${currentPage + 1} of ${totalPages}`}
           </span>
-          {/* Dot nav for small page counts */}
-          {totalPages <= 12 ? (
+          {totalPages <= 16 ? (
             <div className="flex items-center gap-1.5" dir="ltr">
               {pages.map((_, i) => (
                 <button
@@ -445,11 +352,16 @@ export default function PageFlipReader({ pages, title, onClose }: Props) {
                     if (delta > 0) for (let n = 0; n < delta; n++) flip?.flipNext('bottom');
                     else for (let n = 0; n < -delta; n++) flip?.flipPrev('bottom');
                   }}
-                  className={`rounded-full transition-all duration-200 ${
-                    i === currentPage
-                      ? 'w-5 h-2 bg-amber-400'
-                      : 'w-2 h-2 bg-stone-600 hover:bg-stone-500'
-                  }`}
+                  style={{
+                    borderRadius: 9999,
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: 0,
+                    background: i === currentPage ? '#f59e0b' : 'rgba(255,255,255,0.2)',
+                    width: i === currentPage ? 20 : 8,
+                    height: 8,
+                    transition: 'all 0.2s',
+                  }}
                   aria-label={`Go to page ${i + 1}`}
                 />
               ))}
@@ -476,7 +388,8 @@ export default function PageFlipReader({ pages, title, onClose }: Props) {
         <button
           onClick={isRTL ? goPrev : goNext}
           disabled={isRTL ? !canGoPrev : !canGoNext}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-stone-800/80 hover:bg-amber-900/60 text-stone-300 hover:text-amber-100 text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200"
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-stone-300 hover:text-amber-200 text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200"
+          style={{ background: 'rgba(255,255,255,0.07)' }}
         >
           {isRTL ? 'السابق' : 'Next'}
           <ChevronRight className="w-4 h-4" />
