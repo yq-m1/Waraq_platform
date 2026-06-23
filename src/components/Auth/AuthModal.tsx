@@ -88,7 +88,11 @@ export default function AuthModal({ isOpen, initialMode, onClose }: AuthModalPro
       return;
     }
 
-    const { data, error: signupError } = await supabase.auth.signUp({ email, password });
+    const { data, error: signupError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { username } },
+    });
 
     if (signupError) {
       setError(signupError.message);
@@ -97,10 +101,12 @@ export default function AuthModal({ isOpen, initialMode, onClose }: AuthModalPro
     }
 
     if (data.user) {
-      const { error: profileError } = await supabase.from('profiles').insert({
-        id: data.user.id,
-        username,
-      });
+      // The DB trigger already created the profile via auth.users INSERT.
+      // Upsert ensures the chosen username wins even if the trigger ran first
+      // with a fallback value.
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .upsert({ id: data.user.id, username }, { onConflict: 'id' });
       if (profileError) {
         setError(profileError.message);
         setLoading(false);
