@@ -44,6 +44,35 @@ export default function AuthModal({ isOpen, initialMode, onClose }: AuthModalPro
 
   if (!isOpen) return null;
 
+  function mapAuthError(error: { message: string; code?: string }, t: typeof import('../../translations/ar').ar): string {
+    const code = error.code ?? '';
+    const msg = error.message.toLowerCase();
+
+    if (code === 'user_already_exists' || msg.includes('already registered') || msg.includes('already exists')) {
+      return t.auth.error_user_exists;
+    }
+    if (code === 'invalid_credentials' || msg.includes('invalid login') || msg.includes('invalid credentials')) {
+      return t.auth.error_invalid_credentials;
+    }
+    if (code === 'email_not_confirmed' || msg.includes('email not confirmed') || msg.includes('not confirmed')) {
+      return t.auth.error_email_not_confirmed;
+    }
+    if (code === 'weak_password' || msg.includes('weak password') || msg.includes('password should')) {
+      return t.auth.error_weak_password;
+    }
+    if (code === 'over_request_rate_limit' || code === 'too_many_requests' || msg.includes('rate limit') || msg.includes('too many')) {
+      return t.auth.error_too_many_requests;
+    }
+    if (msg.includes('fetch') || msg.includes('network') || msg.includes('connection')) {
+      return t.auth.error_network;
+    }
+    return t.auth.error_unknown;
+  }
+
+  function isPasswordStrong(pw: string): boolean {
+    return /[A-Z]/.test(pw) && /[a-z]/.test(pw) && /[0-9]/.test(pw) && pw.length >= 8;
+  }
+
   async function handleLogin(e: FormEvent) {
     e.preventDefault();
     setLoading(true);
@@ -51,7 +80,7 @@ export default function AuthModal({ isOpen, initialMode, onClose }: AuthModalPro
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) {
-      setError(error.message);
+      setError(mapAuthError(error, t));
     } else {
       await refreshProfile(data.user?.id);
       onClose();
@@ -65,6 +94,12 @@ export default function AuthModal({ isOpen, initialMode, onClose }: AuthModalPro
 
     if (password !== confirmPassword) {
       setError(t.auth.passwords_dont_match);
+      setLoading(false);
+      return;
+    }
+
+    if (!isPasswordStrong(password)) {
+      setError(t.auth.password_weak);
       setLoading(false);
       return;
     }
@@ -95,7 +130,7 @@ export default function AuthModal({ isOpen, initialMode, onClose }: AuthModalPro
     });
 
     if (signupError) {
-      setError(signupError.message);
+      setError(mapAuthError(signupError, t));
       setLoading(false);
       return;
     }
@@ -112,11 +147,16 @@ export default function AuthModal({ isOpen, initialMode, onClose }: AuthModalPro
         setLoading(false);
         return;
       }
-      await refreshProfile(data.user.id);
+
+      if (data.session) {
+        // Email confirmation is disabled — user is immediately logged in.
+        await refreshProfile(data.user.id);
+      }
     }
 
     setLoading(false);
-    setSuccess(t.auth.signup_success);
+    // Always show the email confirmation message since confirmation is enabled.
+    setSuccess(t.auth.signup_confirm_email);
   }
 
   async function handleForgotPassword(e: FormEvent) {
@@ -306,6 +346,7 @@ export default function AuthModal({ isOpen, initialMode, onClose }: AuthModalPro
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
+                <p className="mt-1.5 text-xs text-stone-400" dir="rtl">{t.auth.password_requirements}</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-stone-700 mb-1.5">{t.auth.confirm_password}</label>
