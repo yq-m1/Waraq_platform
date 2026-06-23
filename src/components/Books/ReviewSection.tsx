@@ -19,6 +19,7 @@ export default function ReviewSection({ bookId, onOpenAuth }: ReviewSectionProps
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitMsg, setSubmitMsg] = useState('');
+  const [submitError, setSubmitError] = useState('');
   const [userReview, setUserReview] = useState<Review | null>(null);
 
   async function fetchReviews() {
@@ -51,25 +52,23 @@ export default function ReviewSection({ bookId, onOpenAuth }: ReviewSectionProps
     if (userRating === 0) return;
     setSubmitting(true);
     setSubmitMsg('');
+    setSubmitError('');
 
-    if (userReview) {
-      await supabase
-        .from('reviews')
-        .update({ rating: userRating, comment })
-        .eq('id', userReview.id);
-    } else {
-      await supabase.from('reviews').insert({
-        book_id: bookId,
-        user_id: user.id,
-        rating: userRating,
-        comment,
-      });
-    }
+    const { error } = await supabase
+      .from('reviews')
+      .upsert(
+        { book_id: bookId, user_id: user.id, rating: userRating, comment },
+        { onConflict: 'book_id,user_id' }
+      );
 
     setSubmitting(false);
-    setSubmitMsg(t.book.review_submitted);
-    await fetchReviews();
-    setTimeout(() => setSubmitMsg(''), 3000);
+    if (error) {
+      setSubmitError(error.message);
+    } else {
+      setSubmitMsg(t.book.review_submitted);
+      await fetchReviews();
+      setTimeout(() => setSubmitMsg(''), 3000);
+    }
   }
 
   const avgRating = reviews.length > 0
@@ -140,6 +139,8 @@ export default function ReviewSection({ bookId, onOpenAuth }: ReviewSectionProps
             <div className="flex items-center justify-between mt-3">
               {submitMsg ? (
                 <span className="text-emerald-600 text-sm font-medium">{submitMsg}</span>
+              ) : submitError ? (
+                <span className="text-red-500 text-sm font-medium">{submitError}</span>
               ) : <span />}
               <button
                 onClick={handleSubmit}
