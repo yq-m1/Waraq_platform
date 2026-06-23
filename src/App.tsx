@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { AuthProvider } from './contexts/AuthContext';
+import { useAuth } from './contexts/AuthContext';
 import { LanguageProvider } from './contexts/LanguageContext';
 import Navbar from './components/Layout/Navbar';
 import Footer from './components/Layout/Footer';
@@ -23,6 +24,7 @@ type Page =
 type AuthModalState = { open: false } | { open: true; mode: 'login' | 'signup' };
 
 function AppInner() {
+  const { isPasswordRecovery, clearPasswordRecovery } = useAuth();
   const [page, setPage] = useState<Page>({ name: 'home' });
   const [authModal, setAuthModal] = useState<AuthModalState>({ open: false });
 
@@ -119,6 +121,14 @@ function AppInner() {
           isOpen
           initialMode={authModal.mode}
           onClose={closeAuth}
+        />
+      )}
+
+      {isPasswordRecovery && (
+        <AuthModal
+          isOpen
+          initialMode="set-password"
+          onClose={clearPasswordRecovery}
         />
       )}
     </div>

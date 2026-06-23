@@ -91,6 +91,9 @@ export const ar = {
     signup_success: 'تم إنشاء الحساب! يرجى تفعيل بريدك الإلكتروني.',
     reset_sent: 'تم إرسال رابط الاستعادة على بريدك',
     passwords_dont_match: 'كلمتا المرور غير متطابقتين',
+    set_new_password: 'تعيين كلمة مرور جديدة',
+    password_updated: 'تم تحديث كلمة المرور بنجاح! يمكنك الآن تسجيل الدخول.',
+    new_password: 'كلمة المرور الجديدة',
   },
   reader: {
     page: 'صفحة',

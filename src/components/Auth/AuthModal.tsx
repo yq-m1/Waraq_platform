@@ -4,11 +4,11 @@ import { supabase } from '../../lib/supabase';
 import { useLang } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
 
-type AuthMode = 'login' | 'signup' | 'forgot';
+type AuthMode = 'login' | 'signup' | 'forgot' | 'set-password';
 
 type AuthModalProps = {
   isOpen: boolean;
-  initialMode: 'login' | 'signup';
+  initialMode: 'login' | 'signup' | 'set-password';
   onClose: () => void;
 };
 
@@ -128,6 +128,24 @@ export default function AuthModal({ isOpen, initialMode, onClose }: AuthModalPro
     }
   }
 
+  async function handleSetPassword(e: FormEvent) {
+    e.preventDefault();
+    if (password !== confirmPassword) {
+      setError(t.auth.passwords_dont_match);
+      return;
+    }
+    setLoading(true);
+    setError('');
+    const { error } = await supabase.auth.updateUser({ password });
+    setLoading(false);
+    if (error) {
+      setError(error.message);
+    } else {
+      setSuccess(t.auth.password_updated);
+      setTimeout(() => onClose(), 2200);
+    }
+  }
+
   return (
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center p-4"
@@ -153,7 +171,10 @@ export default function AuthModal({ isOpen, initialMode, onClose }: AuthModalPro
               </div>
               <div>
                 <h2 className="text-xl font-bold text-stone-800">
-                  {mode === 'login' ? t.auth.login : mode === 'signup' ? t.auth.signup : t.auth.reset_password}
+                  {mode === 'login' ? t.auth.login
+                    : mode === 'signup' ? t.auth.signup
+                    : mode === 'set-password' ? t.auth.set_new_password
+                    : t.auth.reset_password}
                 </h2>
                 <p className="text-stone-400 text-xs mt-0.5">
                   {lang === 'ar' ? 'وَرَق — منصة الكتب' : 'Waraq — Book Platform'}
@@ -330,8 +351,59 @@ export default function AuthModal({ isOpen, initialMode, onClose }: AuthModalPro
             </form>
           )}
 
+          {/* Set New Password Form (password recovery flow) */}
+          {mode === 'set-password' && !success && (
+            <form onSubmit={handleSetPassword} className="space-y-4">
+              <p className="text-sm text-stone-500 mb-2">
+                {lang === 'ar'
+                  ? 'أدخل كلمة المرور الجديدة لحسابك.'
+                  : 'Enter a new password for your account.'}
+              </p>
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1.5">{t.auth.new_password}</label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder={t.auth.password_placeholder}
+                    required
+                    minLength={8}
+                    className={`w-full border border-stone-200 rounded-xl px-4 py-3 text-sm text-stone-800 placeholder-stone-300 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 transition-all bg-white ${lang === 'ar' ? 'pl-10' : 'pr-10'}`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className={`absolute top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 transition-colors ${lang === 'ar' ? 'left-3' : 'right-3'}`}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1.5">{t.auth.confirm_password}</label>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  placeholder={t.auth.confirm_password}
+                  required
+                  minLength={8}
+                  className="w-full border border-stone-200 rounded-xl px-4 py-3 text-sm text-stone-800 placeholder-stone-300 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 transition-all bg-white"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-amber-500 hover:bg-amber-400 disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition-all shadow-sm shadow-amber-500/20"
+              >
+                {loading ? '...' : t.auth.set_new_password}
+              </button>
+            </form>
+          )}
+
           {/* Footer links */}
-          {!success && (
+          {!success && mode !== 'set-password' && (
             <div className="mt-6 text-center text-sm text-stone-500">
               {mode === 'login' ? (
                 <>

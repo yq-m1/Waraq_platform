@@ -93,6 +93,9 @@ export const en: Translations = {
     signup_success: 'Account created! Please verify your email.',
     reset_sent: 'Recovery link sent to your email',
     passwords_dont_match: "Passwords don't match",
+    set_new_password: 'Set New Password',
+    password_updated: 'Password updated successfully! You can now log in.',
+    new_password: 'New Password',
   },
   reader: {
     page: 'Page',
